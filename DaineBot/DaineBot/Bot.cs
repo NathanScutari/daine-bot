@@ -6,6 +6,10 @@ using System.Reflection;
 using DaineBot.Core;
 using Discord.Interactions;
 using Microsoft.VisualBasic;
+using DaineBot.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using DaineBot.Services;
 
 namespace DaineBot
 {
@@ -16,12 +20,16 @@ namespace DaineBot
 
         public Bot()
         {
+            var socketConfig = new DiscordSocketConfig
+            {
+                GatewayIntents = GatewayIntents.All
+            };
+            _client = new DiscordSocketClient(socketConfig);
             _services = ConfigureServices();
         }
 
         public async Task RunAsync()
         {
-            _client = _services.GetRequiredService<DiscordSocketClient>();
             var interactionService = _services.GetRequiredService<InteractionService>();
 
             _client.Log += LogAsync;
@@ -30,6 +38,13 @@ namespace DaineBot
             // Login et start
             await _client.LoginAsync(TokenType.Bot, Environment.GetEnvironmentVariable("DISCORD_DAINEBOT_TOKEN"));
             await _client.StartAsync();
+
+            // DB
+            using (var scope = _services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<DaineBotDbContext>();
+                db.Database.EnsureCreated();
+            }
 
             // Commandes
             var interactionHandler = _services.GetRequiredService<InteractionHandler>();
@@ -40,13 +55,14 @@ namespace DaineBot
 
         private IServiceProvider ConfigureServices()
         {
-            var client = new DiscordSocketClient();
-            var interactionService = new InteractionService(client);
+            var interactionService = new InteractionService(_client);
 
             var services = new ServiceCollection()
-                .AddSingleton(client)
+                .AddSingleton(_client)
                 .AddSingleton(interactionService)
-                .AddSingleton<InteractionHandler>();
+                .AddScoped<InteractionHandler>()
+                .AddScoped<IAdminService, AdminService>()
+                .AddDbContext<DaineBotDbContext>(options => options.UseSqlite("Data Source=dainebotdata.db").EnableSensitiveDataLogging().LogTo(Console.WriteLine, LogLevel.Information));
 
             return services.BuildServiceProvider();
         }
