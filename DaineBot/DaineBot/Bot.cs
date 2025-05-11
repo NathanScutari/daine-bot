@@ -39,8 +39,14 @@ namespace DaineBot
             _client.Log += LogAsync;
             interactionService.Log += LogAsync;
 
-            // Login et start
-            await _client.LoginAsync(TokenType.Bot, Environment.GetEnvironmentVariable("DISCORD_DAINEBOT_TOKEN"));
+            using (var scope = _host.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<DaineBotDbContext>();
+                await db.Database.MigrateAsync();
+            }
+
+                // Login et start
+                await _client.LoginAsync(TokenType.Bot, Environment.GetEnvironmentVariable("DISCORD_DAINEBOT_TOKEN"));
             await _client.StartAsync();
 
             // DB
@@ -68,6 +74,12 @@ namespace DaineBot
         {
             var interactionService = new InteractionService(_client);
 
+            var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+            var uri = new Uri(databaseUrl);
+            var userInfo = uri.UserInfo.Split(':');
+
+            var connectionString = $"Host={uri.Host};Port={uri.Port};Username={userInfo[0]};Password={userInfo[1]};Database={uri.AbsolutePath.TrimStart('/')};SSL Mode=Require;Trust Server Certificate=true;";
+
             _host = Host.CreateDefaultBuilder(args)
                 .ConfigureLogging(logging =>
                 {
@@ -81,7 +93,7 @@ namespace DaineBot
                     services.AddSingleton<RaidService>();
                     services.AddSingleton<BotReadyService>();
 
-                    services.AddDbContext<DaineBotDbContext>(options => options.UseNpgsql(Environment.GetEnvironmentVariable("DATABASE_URL")));
+                    services.AddDbContext<DaineBotDbContext>(options => options.UseNpgsql(connectionString));
 
                     services.AddScoped<IAdminService, AdminService>();
                     services.AddHostedService<TmpRaidSessionPurger>();
