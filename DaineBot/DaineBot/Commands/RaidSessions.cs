@@ -37,7 +37,7 @@ namespace DaineBot.Commands
 
             if (user == null)
             {
-                await RespondAsync("La commande doit être lancée depuis un serveur", ephemeral: true);
+                await RespondAsync("La commande doit être lancée depuis un serveur.", ephemeral: true);
                 return;
             }
 
