@@ -1,2 +1,8 @@
+# railway.toml
 [build]
-builder = "docker"
+  builder = "dockerfile"
+  dockerfile = "DaineBot/Dockerfile"
+
+[deploy]
+  # Vous pouvez ajouter des variables d'environnement ici si nécessaire
+  env = { "ASPNETCORE_ENVIRONMENT" = "Production" }
