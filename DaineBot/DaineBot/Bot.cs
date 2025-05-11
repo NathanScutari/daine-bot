@@ -78,7 +78,13 @@ namespace DaineBot
             var uri = new Uri(databaseUrl);
             var userInfo = uri.UserInfo.Split(':');
 
-            var connectionString = $"Host={uri.Host};Port={uri.Port};Username={userInfo[0]};Password={userInfo[1]};Database={uri.AbsolutePath.TrimStart('/')};SSL Mode=Require;Trust Server Certificate=true;";
+            var connectionString = $"Host={uri.Host};Port={uri.Port};Username={userInfo[0]};Password={userInfo[1]};Database={uri.AbsolutePath.TrimStart('/')};Trust Server Certificate=true;";
+
+#if DEBUG
+            connectionString += "SSL Mode=Disable;";
+#else
+            connectionString += "SSL Mode=Require;";
+#endif
 
             _host = Host.CreateDefaultBuilder(args)
                 .ConfigureLogging(logging =>
