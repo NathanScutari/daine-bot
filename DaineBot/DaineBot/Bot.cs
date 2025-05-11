@@ -67,12 +67,11 @@ namespace DaineBot
         private void ConfigureServices(string[] args)
         {
             var interactionService = new InteractionService(_client);
-            var dbPath = Path.Combine(AppContext.BaseDirectory, "dainebotdata.db");
 
             _host = Host.CreateDefaultBuilder(args)
                 .ConfigureLogging(logging =>
                 {
-                    logging.SetMinimumLevel(LogLevel.Warning); // ⛔ Ignore Info/Debug
+                    logging.SetMinimumLevel(LogLevel.Warning);
                 })
                 .ConfigureServices((context, services) =>
                 {
@@ -82,8 +81,7 @@ namespace DaineBot
                     services.AddSingleton<RaidService>();
                     services.AddSingleton<BotReadyService>();
 
-                    services.AddDbContext<DaineBotDbContext>(options =>
-                        options.UseSqlite($"Data Source={dbPath}"));
+                    services.AddDbContext<DaineBotDbContext>(options => options.UseNpgsql(Environment.GetEnvironmentVariable("DATABASE_URL")));
 
                     services.AddScoped<IAdminService, AdminService>();
                     services.AddHostedService<TmpRaidSessionPurger>();

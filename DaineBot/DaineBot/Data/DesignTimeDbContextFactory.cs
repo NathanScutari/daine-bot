@@ -13,10 +13,8 @@ namespace DaineBot.Data
     {
         public DaineBotDbContext CreateDbContext(string[] args)
         {
-            var dbPath = Path.Combine(AppContext.BaseDirectory, "dainebotdata.db");
-
             var optionsBuilder = new DbContextOptionsBuilder<DaineBotDbContext>();
-            optionsBuilder.UseSqlite($"Data Source={dbPath}");
+            optionsBuilder.UseNpgsql(Environment.GetEnvironmentVariable("DATABASE_URL"));
 
             return new DaineBotDbContext(optionsBuilder.Options);
         }
