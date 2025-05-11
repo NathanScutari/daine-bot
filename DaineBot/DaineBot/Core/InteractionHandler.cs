@@ -49,6 +49,8 @@ namespace DaineBot.Core
                     await cmd.DeleteAsync();
                 }
             }
+
+            await _client.SetActivityAsync(new Game("le roster avec attention", ActivityType.Watching));
         }
     }
 }
