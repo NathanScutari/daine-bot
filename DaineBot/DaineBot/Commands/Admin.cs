@@ -87,7 +87,7 @@ namespace DaineBot.Commands
 
             if (adminRoles == null)
             {
-                await RespondAsync("Il n'y a pas encore de rôles admin configurés sur ce serveur.");
+                await RespondAsync("Il n'y a pas encore de rôles admin configurés sur ce serveur.", ephemeral: true);
                 return;
             }
 

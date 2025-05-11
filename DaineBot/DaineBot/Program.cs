@@ -7,6 +7,6 @@ namespace DaineBot
 {
     class Program
     {
-        static void Main(string[] args) => new Bot().RunAsync().GetAwaiter().GetResult();
+        static void Main(string[] args) => new Bot(args).RunAsync().GetAwaiter().GetResult();
     }
 }

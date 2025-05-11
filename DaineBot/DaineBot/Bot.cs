@@ -10,6 +10,8 @@ using DaineBot.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using DaineBot.Services;
+using Microsoft.Extensions.Hosting;
+using DaineBot.ScheduledService;
 
 namespace DaineBot
 {
@@ -17,20 +19,22 @@ namespace DaineBot
     {
         private readonly IServiceProvider _services;
         private DiscordSocketClient _client;
+        private IHost _host;
 
-        public Bot()
+        public Bot(string[] args)
         {
             var socketConfig = new DiscordSocketConfig
             {
-                GatewayIntents = GatewayIntents.All
+                GatewayIntents = GatewayIntents.All,
+                AlwaysDownloadUsers = true,
             };
             _client = new DiscordSocketClient(socketConfig);
-            _services = ConfigureServices();
+            ConfigureServices(args);
         }
 
         public async Task RunAsync()
         {
-            var interactionService = _services.GetRequiredService<InteractionService>();
+            var interactionService = _host.Services.GetRequiredService<InteractionService>();
 
             _client.Log += LogAsync;
             interactionService.Log += LogAsync;
@@ -40,31 +44,51 @@ namespace DaineBot
             await _client.StartAsync();
 
             // DB
-            using (var scope = _services.CreateScope())
+            using (var scope = _host.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<DaineBotDbContext>();
                 db.Database.EnsureCreated();
             }
 
             // Commandes
-            var interactionHandler = _services.GetRequiredService<InteractionHandler>();
+            var interactionHandler = _host.Services.GetRequiredService<InteractionHandler>();
             await interactionHandler.InitializeAsync();
 
-            await Task.Delay(-1);
+            _client.Ready += () =>
+            {
+                var botReadyService = _host.Services.GetRequiredService<BotReadyService>();
+                botReadyService.MarkReady();
+                return Task.CompletedTask;
+            };
+
+            await _host.RunAsync();
         }
 
-        private IServiceProvider ConfigureServices()
+        private void ConfigureServices(string[] args)
         {
             var interactionService = new InteractionService(_client);
 
-            var services = new ServiceCollection()
-                .AddSingleton(_client)
-                .AddSingleton(interactionService)
-                .AddScoped<InteractionHandler>()
-                .AddScoped<IAdminService, AdminService>()
-                .AddDbContext<DaineBotDbContext>(options => options.UseSqlite("Data Source=dainebotdata.db").EnableSensitiveDataLogging().LogTo(Console.WriteLine, LogLevel.Information));
+            _host = Host.CreateDefaultBuilder(args)
+                .ConfigureLogging(logging =>
+                {
+                    logging.SetMinimumLevel(LogLevel.Warning); // ⛔ Ignore Info/Debug
+                })
+                .ConfigureServices((context, services) =>
+                {
+                    services.AddSingleton(_client);
+                    services.AddSingleton(interactionService);
+                    services.AddSingleton<InteractionHandler>();
+                    services.AddSingleton<RaidService>();
+                    services.AddSingleton<BotReadyService>();
 
-            return services.BuildServiceProvider();
+                    services.AddDbContext<DaineBotDbContext>(options =>
+                        options.UseSqlite("Data Source=dainebotdata.db"));
+
+                    services.AddScoped<IAdminService, AdminService>();
+                    services.AddHostedService<TmpRaidSessionPurger>();
+                    services.AddHostedService<RaidSessionReminderService>();
+                })
+                .Build();
         }
 
         private Task LogAsync(LogMessage log)

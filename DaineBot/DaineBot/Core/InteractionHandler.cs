@@ -2,6 +2,8 @@
 using Discord.WebSocket;
 using Discord.Interactions;
 using System.Reflection;
+using Discord.Commands;
+using DaineBot.Commands;
 
 
 namespace DaineBot.Core

@@ -19,17 +19,12 @@
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.4" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.4" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Migrations\" />
     <Folder Include="Repository\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="dainebotdata.db">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>

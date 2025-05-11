@@ -3,6 +3,7 @@ using System;
 using DaineBot.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DaineBot.Migrations
 {
     [DbContext(typeof(DaineBotDbContext))]
-    partial class DaineBotDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250510151653_UpdateRaidSession")]
+    partial class UpdateRaidSession
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.4");
@@ -38,7 +41,6 @@ namespace DaineBot.Migrations
             modelBuilder.Entity("DaineBot.Models.RaidSession", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Day")
@@ -56,12 +58,7 @@ namespace DaineBot.Migrations
                     b.Property<string>("ReportCode")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("RosterId")
-                        .HasColumnType("INTEGER");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("RosterId");
 
                     b.ToTable("RaidSessions");
                 });
@@ -69,7 +66,6 @@ namespace DaineBot.Migrations
             modelBuilder.Entity("DaineBot.Models.ReadyCheck", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
                     b.PrimitiveCollection<string>("AcceptedPlayers")
@@ -80,13 +76,7 @@ namespace DaineBot.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("SessionId")
-                        .HasColumnType("INTEGER");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("SessionId")
-                        .IsUnique();
 
                     b.ToTable("ReadyChecks");
                 });
@@ -100,52 +90,22 @@ namespace DaineBot.Migrations
                     b.Property<ulong>("Guild")
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong>("RaidLeader")
-                        .HasColumnType("INTEGER");
-
                     b.Property<ulong>("RosterChannel")
                         .HasColumnType("INTEGER");
 
                     b.Property<ulong>("RosterRole")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("TimeZoneId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.HasKey("Id");
 
                     b.ToTable("Rosters");
-                });
-
-            modelBuilder.Entity("DaineBot.Models.TmpRaidSession", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Day")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<ulong>("GuildId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<ulong>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("TmpSessions");
                 });
 
             modelBuilder.Entity("DaineBot.Models.RaidSession", b =>
                 {
                     b.HasOne("DaineBot.Models.Roster", "Roster")
                         .WithMany("Sessions")
-                        .HasForeignKey("RosterId")
+                        .HasForeignKey("Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -156,7 +116,7 @@ namespace DaineBot.Migrations
                 {
                     b.HasOne("DaineBot.Models.RaidSession", "Session")
                         .WithOne("Check")
-                        .HasForeignKey("DaineBot.Models.ReadyCheck", "SessionId")
+                        .HasForeignKey("DaineBot.Models.ReadyCheck", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

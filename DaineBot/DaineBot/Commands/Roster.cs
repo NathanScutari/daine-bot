@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using SummaryAttribute = Discord.Interactions.SummaryAttribute;
 
@@ -80,19 +81,96 @@ namespace DaineBot.Commands
                 return;
             }
 
+            var timeZones = new[]
+            {
+                "Europe/Paris",
+                "Europe/London",
+                "UTC",
+                "America/New_York",
+                "America/Chicago",
+                "America/Denver",
+                "America/Los_Angeles",
+                "Europe/Berlin",
+                "Europe/Moscow",
+                "Asia/Tokyo",
+                "Asia/Shanghai",
+                "Asia/Kolkata",
+                "Australia/Sydney",
+                "Europe/Madrid",
+                "Europe/Rome",
+                "Africa/Johannesburg",
+                "America/Sao_Paulo",
+                "America/Toronto",
+                "Asia/Singapore",
+                "Asia/Dubai",
+                "Pacific/Auckland",
+                "Europe/Amsterdam",
+                "Europe/Oslo",
+                "Asia/Bangkok",
+                "Asia/Seoul"
+            };
+            var timeZoneBuilder = new ComponentBuilder()
+                .WithSelectMenu(new SelectMenuBuilder()
+                    .WithCustomId($"select_roster_timezone:{roleId}:{channelId}")
+                    .WithPlaceholder("Choisis un fuseau horaire pour le roster")
+                    .WithMinValues(1)
+                    .WithMaxValues(1)
+                    .WithOptions(timeZones.Select(tz => new SelectMenuOptionBuilder()
+                        .WithLabel(tz)
+                        .WithValue(tz)).ToList()));
+
+            await RespondAsync($"Choisis un fuseau horaire pour le roster :", components: timeZoneBuilder.Build(), ephemeral: true);
+        }
+
+        [ComponentInteraction("select_roster_timezone:*:*")]
+        public async Task HandleRosterTimezoneSelect(string roleIdRaw, string channelIdRaw, string[] selected)
+        {
+            if (!ulong.TryParse(roleIdRaw, out ulong roleId) || !ulong.TryParse(channelIdRaw, out ulong channelId))
+            {
+                await RespondAsync("Erreur lors de la sélection.", ephemeral: true);
+                return;
+            }
+
+            var timeZoneId = selected.First();
+            var guildId = Context.Guild.Id;
+
+            var builder = new ComponentBuilder()
+                .WithSelectMenu(new SelectMenuBuilder()
+                    .WithCustomId($"select_roster_raidleader:{roleId}:{channelId}:{timeZoneId}")
+                    .WithPlaceholder("Choisis un raid leader pour ce roster")
+                    .WithMinValues(1)
+                    .WithMaxValues(1)
+                    .WithType(ComponentType.UserSelect));
+
+            
+
+            await RespondAsync($"Choisis un raid leader pour ce roster :", components: builder.Build(), ephemeral: true);
+        }
+
+        [ComponentInteraction("select_roster_raidleader:*:*:*")]
+        public async Task HandleRosterTimezoneSelect(string roleIdRaw, string channelIdRaw, string timeZoneId, string[] selected)
+        {
+            if (!ulong.TryParse(roleIdRaw, out ulong roleId) || !ulong.TryParse(channelIdRaw, out ulong channelId) || !ulong.TryParse(selected.First(), out ulong userId))
+            {
+                await RespondAsync("Erreur lors de la sélection.", ephemeral: true);
+                return;
+            }
+
             var guildId = Context.Guild.Id;
 
             var roster = new Models.Roster
             {
                 Guild = guildId,
                 RosterRole = roleId,
-                RosterChannel = channelId
+                RosterChannel = channelId,
+                TimeZoneId = timeZoneId,
+                RaidLeader = userId
             };
 
             _db.Rosters.Add(roster);
             await _db.SaveChangesAsync();
 
-            await RespondAsync($"Roster enregistré avec succès pour le rôle <@&{roleId}> dans le salon <#{channelId}>.", ephemeral: true);
+            await RespondAsync($"Roster enregistré avec succès pour le rôle <@&{roleId}> dans le salon <#{channelId}> avec le fuseau horaire '{timeZoneId}' et le raid lead <@{userId}>.", ephemeral: true);
         }
 
         [SlashCommand("supprimer-roster", "Supprime le roster enregistré pour ce serveur")]
@@ -178,7 +256,7 @@ namespace DaineBot.Commands
                 await DeferAsync(ephemeral: true);
                 await Context.Guild.DownloadUsersAsync();
             }
-                
+
             int roleMembersNbr = Context.Guild.Users.Count(u => u.Roles.Contains(role));
             List<SocketGuildUser> users = role.Members.ToList();
             users.Sort(delegate (SocketGuildUser memberA, SocketGuildUser memberB) { return (memberA.Nickname != null) ? memberA.Nickname.CompareTo(memberB.Nickname ?? memberB.GlobalName) : memberA.GlobalName.CompareTo(memberB.Nickname ?? memberB.GlobalName); });

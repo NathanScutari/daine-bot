@@ -13,5 +13,7 @@ namespace DaineBot.Models
         public ulong RosterRole { get; set; }
         public ulong RosterChannel { get; set; }
         public List<RaidSession> Sessions { get; set; } = new();
+        public required string TimeZoneId { get; set; }
+        public ulong RaidLeader { get; set; }
     }
 }
