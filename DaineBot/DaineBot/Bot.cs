@@ -67,6 +67,7 @@ namespace DaineBot
         private void ConfigureServices(string[] args)
         {
             var interactionService = new InteractionService(_client);
+            var dbPath = Path.Combine(AppContext.BaseDirectory, "dainebotdata.db");
 
             _host = Host.CreateDefaultBuilder(args)
                 .ConfigureLogging(logging =>
@@ -82,11 +83,12 @@ namespace DaineBot
                     services.AddSingleton<BotReadyService>();
 
                     services.AddDbContext<DaineBotDbContext>(options =>
-                        options.UseSqlite("Data Source=dainebotdata.db"));
+                        options.UseSqlite($"Data Source={dbPath}"));
 
                     services.AddScoped<IAdminService, AdminService>();
                     services.AddHostedService<TmpRaidSessionPurger>();
                     services.AddHostedService<RaidSessionReminderService>();
+                    services.AddHostedService<ReadyCheckCheckerService>();
                 })
                 .Build();
         }

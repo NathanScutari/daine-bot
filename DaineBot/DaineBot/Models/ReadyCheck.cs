@@ -13,5 +13,9 @@ namespace DaineBot.Models
         public int SessionId { get; set; }
         public List<ulong> AcceptedPlayers { get; set; } = [];
         public List<ulong> DeniedPlayers { get; set; } = [];
+        public bool ReminderSent { get; set; }
+
+        public bool Complete { get; set; }
+        public List<ReadyCheckMessage> Messages { get; set; } = [];
     }
 }

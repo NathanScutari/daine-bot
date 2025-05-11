@@ -40,14 +40,56 @@ namespace DaineBot.Services
             return nextSessionConverted;
         }
 
+        public async Task SendRefusalToRL(ReadyCheck check, SocketUser user)
+        {
+            var guild = _client.GetGuild(check.Session.Roster.Guild);
+            var socketGuildUser = guild?.GetUser(user.Id);
+            var RL = _client.GetUser(check.Session.Roster.RaidLeader);
+            DateTime nextSession = GetNextSessionDateTime(check.Session);
+
+            if (guild == null || socketGuildUser == null) return;
+
+            string response = $"<:beuuuuuh:1024757080235712512> {socketGuildUser.Nickname ?? socketGuildUser.GlobalName} a refusé le ready check pour la prochaine session de raid de {guild.Name} le <t:{((DateTimeOffset)nextSession).ToUnixTimeSeconds()}:F>";
+
+            await RL.SendMessageAsync(response);
+        }
+
+        public async Task SendRefusalReasonToRL(ReadyCheck check, SocketUser user, string reason)
+        {
+            var guild = _client.GetGuild(check.Session.Roster.Guild);
+            var socketGuildUser = guild?.GetUser(user.Id);
+            var RL = _client.GetUser(check.Session.Roster.RaidLeader);
+            DateTime nextSession = GetNextSessionDateTime(check.Session);
+
+            if (guild == null || socketGuildUser == null) return;
+
+            string response = $"Aucune raison donnée";
+            if (!String.IsNullOrWhiteSpace(response))
+            {
+                response = "Raison du refus: " + reason;
+            }
+
+            await RL.SendMessageAsync(response);
+        }
+
+        public List<(string sessionStr, int id)> GetAllSessionsForRoster(Roster roster)
+        {
+            List<(string, int)> sessions = new();
+
+            foreach (RaidSession session in roster.Sessions)
+            {
+                DateTime sessionDT = GetNextSessionDateTime(session);
+                (string, int) sessionTuple = ($"<t:{((DateTimeOffset)sessionDT).ToUnixTimeSeconds()}:F>", session.Id);
+                sessions.Add(sessionTuple);
+            }
+
+            return sessions;
+        }
+
         public async Task CreateReadyCheckForSession(RaidSession session)
         {
             var guild = _client.GetGuild(session.Roster.Guild);
             var role = guild.GetRole(session.Roster.RosterRole);
-
-            var builder = new ComponentBuilder()
-                .WithButton("Présent", $"readycheck_present:{session.Id}", ButtonStyle.Success)
-                .WithButton("Absent", $"readycheck_absent:{session.Id}", ButtonStyle.Danger);
 
             DateTime utcNextSession = GetNextSessionDateTime(session);
 
@@ -61,13 +103,27 @@ namespace DaineBot.Services
             await _db.ReadyChecks.AddAsync(readyCheck);
             await _db.SaveChangesAsync();
 
+            var builder = new ComponentBuilder()
+                .WithButton("Présent", $"readycheck_present:{readyCheck.Id}", ButtonStyle.Success)
+                .WithButton("Absent", $"readycheck_absent:{readyCheck.Id}", ButtonStyle.Danger);
+
             foreach (var user in role.Members)
             {
                 try
                 {
                     var dm = await user.SendMessageAsync(
-                        $"Rappel : la prochaine session de raid est prévue le <t:{((DateTimeOffset)utcNextSession).ToUnixTimeSeconds()}:F>.\nClique sur un bouton pour indiquer ta présence.",
+                        $"La prochaine session de raid du roster de {guild.Name} est prévue le <t:{((DateTimeOffset)utcNextSession).ToUnixTimeSeconds()}:F>.\nClique sur un bouton pour indiquer ta présence.",
                         components: builder.Build());
+
+                    ReadyCheckMessage readyChechMessage = new()
+                    {
+                        CheckId = readyCheck.Id,
+                        MessageId = dm.Id,
+                        UserId = user.Id,
+                    };
+
+                    _db.ReadyCheckMessages.Add(readyChechMessage);
+                    await _db.SaveChangesAsync();
                 }
                 catch (Exception ex)
                 {

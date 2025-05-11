@@ -3,6 +3,7 @@ using System;
 using DaineBot.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DaineBot.Migrations
 {
     [DbContext(typeof(DaineBotDbContext))]
-    partial class DaineBotDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250511142711_AddReadyCheckReminder")]
+    partial class AddReadyCheckReminder
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.4");
@@ -53,9 +56,6 @@ namespace DaineBot.Migrations
                     b.Property<int>("Minute")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("NextSessionEditId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("ReportCode")
                         .HasColumnType("TEXT");
 
@@ -63,8 +63,6 @@ namespace DaineBot.Migrations
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("NextSessionEditId");
 
                     b.HasIndex("RosterId");
 
@@ -80,9 +78,6 @@ namespace DaineBot.Migrations
                     b.PrimitiveCollection<string>("AcceptedPlayers")
                         .IsRequired()
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("Complete")
-                        .HasColumnType("INTEGER");
 
                     b.PrimitiveCollection<string>("DeniedPlayers")
                         .IsRequired()
@@ -100,28 +95,6 @@ namespace DaineBot.Migrations
                         .IsUnique();
 
                     b.ToTable("ReadyChecks");
-                });
-
-            modelBuilder.Entity("DaineBot.Models.ReadyCheckMessage", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("CheckId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<ulong>("MessageId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<ulong>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CheckId");
-
-                    b.ToTable("ReadyCheckMessages");
                 });
 
             modelBuilder.Entity("DaineBot.Models.Roster", b =>
@@ -176,17 +149,11 @@ namespace DaineBot.Migrations
 
             modelBuilder.Entity("DaineBot.Models.RaidSession", b =>
                 {
-                    b.HasOne("DaineBot.Models.RaidSession", "NextSessionEdit")
-                        .WithMany()
-                        .HasForeignKey("NextSessionEditId");
-
                     b.HasOne("DaineBot.Models.Roster", "Roster")
                         .WithMany("Sessions")
                         .HasForeignKey("RosterId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("NextSessionEdit");
 
                     b.Navigation("Roster");
                 });
@@ -202,25 +169,9 @@ namespace DaineBot.Migrations
                     b.Navigation("Session");
                 });
 
-            modelBuilder.Entity("DaineBot.Models.ReadyCheckMessage", b =>
-                {
-                    b.HasOne("DaineBot.Models.ReadyCheck", "Check")
-                        .WithMany("Messages")
-                        .HasForeignKey("CheckId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Check");
-                });
-
             modelBuilder.Entity("DaineBot.Models.RaidSession", b =>
                 {
                     b.Navigation("Check");
-                });
-
-            modelBuilder.Entity("DaineBot.Models.ReadyCheck", b =>
-                {
-                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("DaineBot.Models.Roster", b =>

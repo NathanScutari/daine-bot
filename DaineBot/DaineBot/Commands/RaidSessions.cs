@@ -6,6 +6,7 @@ using Discord.Commands;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -20,11 +21,13 @@ namespace DaineBot.Commands
     {
         private readonly DaineBotDbContext _db;
         private readonly IAdminService _adminService;
+        private readonly RaidService _raidService;
 
-        public Raid(DaineBotDbContext db, IAdminService adminService)
+        public Raid(DaineBotDbContext db, IAdminService adminService, RaidService raidService)
         {
             _db = db;
             _adminService = adminService;
+            _raidService = raidService;
         }
 
         [SlashCommand("raid-session", "Affiche les infos des sessions de raid du roster")]
@@ -64,7 +67,7 @@ namespace DaineBot.Commands
                 string response = $"Il y a **{sessions.Count} sessions par semaine :**";
                 foreach (var session in sessions)
                 {
-                    response += $"\n  - {CultureInfo.CurrentCulture.DateTimeFormat.DayNames[session.Day]} : {session.Hour}H{session.Minute}, Durée : {session.Duration.ToString(@"hh\:mm")}";
+                    response += $"\n  * {CultureInfo.CurrentCulture.DateTimeFormat.DayNames[session.Day]} : {session.Hour}H{session.Minute}, Durée : {session.Duration.ToString(@"hh\:mm")}";
                 }
 
                 await RespondAsync(response, ephemeral: true, components: builder?.Build());
@@ -110,15 +113,9 @@ namespace DaineBot.Commands
             await _db.TmpSessions.AddAsync(tmpRaidSession);
             await _db.SaveChangesAsync();
 
-            var builder = new ModalBuilder()
-                .WithTitle("Heure de début du raid")
-                .WithCustomId("raid_time_input")
-                .AddTextInput("Heure (0–23)", "hour", TextInputStyle.Short)
-                .AddTextInput("Minute (0–59)", "minute", TextInputStyle.Short)
-                .AddTextInput("Durée (minutes)", "duration", TextInputStyle.Short);
-
             await RespondWithModalAsync<RaidSessionModal>("raid_time_input");
         }
+
 
         [ModalInteraction("raid_time_input")]
         public async Task RaidSessionFinaliseCreation(RaidSessionModal raidModal)
@@ -165,6 +162,48 @@ namespace DaineBot.Commands
             await _db.SaveChangesAsync();
 
             await RespondAsync("La session de raid a bien été ajoutée.", ephemeral: true);
+        }
+
+        [SlashCommand("modifier-prochaine-session", "Permet de modifier une prochaine session de raid")]
+        public async Task RaidSessionTmpEdit()
+        {
+            if (!await _adminService.HasAdminRoleAsync(Context)) { return; }
+
+            var guild = Context.Guild;
+            if (guild == null) { return; }
+
+            var builder = new ComponentBuilder();
+
+            Models.Roster? roster = _db.Rosters.FirstOrDefault(r => r.Guild == guild.Id);
+
+            if (roster == null)
+            {
+                await RespondAsync("Il n'y a pas encore de roster configuré sur le serveur.");
+                return;
+            }
+
+            var sessionTuple = _raidService.GetAllSessionsForRoster(roster);
+
+            foreach (var session in sessionTuple)
+            {
+                builder.WithButton(session.sessionStr, "session_edit:" + session.id);
+            }
+
+            await RespondAsync("Choisis une session à modifier", components: builder.Build(), ephemeral: true);
+        }
+
+        [ComponentInteraction("session_edit:*")]
+        public async Task RaidSessionChoiceEdit(string id)
+        {
+            int sessionId = int.Parse(id.Replace("session_edit:", ""));
+
+            await RespondWithModalAsync<RaidSessionModal>($"session_edit_modal:{sessionId}");
+        }
+
+        [ModalInteraction("session_edit_modal:*")]
+        public async Task RaidSessionConfirmEdit(string id, RaidSessionModal modal)
+        {
+            int sessionId = int.Parse(id.Replace("session_edit_modal:", ""));
         }
 
     }

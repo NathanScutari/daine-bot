@@ -19,6 +19,7 @@ namespace DaineBot.Data
         public DbSet<Roster> Rosters { get; set; }
         public DbSet<AdminRole> AdminRoles { get; set; }
         public DbSet<TmpRaidSession> TmpSessions { get; set; }
+        public DbSet<ReadyCheckMessage> ReadyCheckMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -31,6 +32,11 @@ namespace DaineBot.Data
                 .HasMany(r => r.Sessions)
                 .WithOne(rs => rs.Roster)
                 .HasForeignKey(rs => rs.RosterId);
+
+            modelBuilder.Entity<ReadyCheck>()
+                .HasMany(rc => rc.Messages)
+                .WithOne(rcm => rcm.Check)
+                .HasForeignKey(rcm => rcm.CheckId);
         }
     }
 }
