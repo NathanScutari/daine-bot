@@ -195,15 +195,88 @@ namespace DaineBot.Commands
         [ComponentInteraction("session_edit:*")]
         public async Task RaidSessionChoiceEdit(string id)
         {
-            int sessionId = int.Parse(id.Replace("session_edit:", ""));
+            var tmpRaidSession = _db.TmpSessions.FirstOrDefault(trs => trs.UserId == Context.User.Id && trs.GuildId == Context.Guild.Id);
+            var sessionId = int.Parse(id.Replace("session_edit:", ""));
 
-            await RespondWithModalAsync<RaidSessionModal>($"session_edit_modal:{sessionId}");
+            if (tmpRaidSession != null)
+            {
+                _db.TmpSessions.Remove(tmpRaidSession);
+                await _db.SaveChangesAsync();
+            }
+
+            var builder = new ComponentBuilder()
+                        .WithButton("Lundi", customId: $"raid_day_edit_1:{sessionId}")
+                        .WithButton("Mardi", customId: $"raid_day_edit_2:{sessionId}")
+                        .WithButton("Mercredi", customId: $"raid_day_edit_3:{sessionId}")
+                        .WithButton("Jeudi", customId: $"raid_day_edit_4:{sessionId}")
+                        .WithButton("Vendredi", customId: $"raid_day_edit_5:{sessionId}")
+                        .WithButton("Samedi", customId: $"raid_day_edit_6:{sessionId}")
+                        .WithButton("Dimanche", customId: $"raid_day_edit_0:{sessionId}");
+
+            await RespondAsync("Choisis le jour du raid pour remplacer la prochaine session", components: builder.Build(), ephemeral: true);
         }
 
-        [ModalInteraction("session_edit_modal:*")]
-        public async Task RaidSessionConfirmEdit(string id, RaidSessionModal modal)
+        [ComponentInteraction("raid_day_edit_*:*")]
+        public async Task RaidSessionChoiceEdit(string dayRaw, string sessionIdRaw)
         {
-            int sessionId = int.Parse(id.Replace("session_edit_modal:", ""));
+            if (!int.TryParse(dayRaw, out int day) || !int.TryParse(sessionIdRaw, out int sessionId))
+            {
+                await RespondAsync("Erreur lors de la sélection.", ephemeral: true);
+                return;
+            }
+
+            await RespondWithModalAsync<RaidSessionModal>($"session_edit_modal:{day}:{sessionId}");
+        }
+
+        [ModalInteraction("session_edit_modal:*:*")]
+        public async Task RaidSessionConfirmEdit(string dayRaw, string sessionIdRaw, RaidSessionModal modal)
+        {
+            if (!int.TryParse(dayRaw, out int day) || !int.TryParse(sessionIdRaw, out int sessionId))
+            {
+                await RespondAsync("Erreur lors de la sélection.", ephemeral: true);
+                return;
+            }
+
+            Models.Roster? roster = await _db.Rosters.FirstOrDefaultAsync(r => r.Guild == Context.Guild.Id);
+
+            if (roster == null)
+            {
+                await RespondAsync("Il n'y a pas de roster de configuré sur ce serveur.");
+                return;
+            }
+
+            RaidSession? sessionToReplace = await _db.RaidSessions.FirstOrDefaultAsync(rs => rs.Id == sessionId);
+
+            if (sessionToReplace == null)
+            {
+                await RespondAsync("Impossible de retrouver la session à remplacer, elle a peut être été supprimée entre temps ?");
+                return;
+            }
+
+            var hourStr = modal.Hour;
+            var minuteStr = modal.Minute;
+            var durationStr = modal.Duration;
+
+            if (!int.TryParse(hourStr, out var hour) || hour < 0 || hour > 23 ||
+                !int.TryParse(minuteStr, out var minute) || minute < 0 || minute > 59 ||
+                !int.TryParse(durationStr, out var duration) || duration <= 0)
+            {
+                await RespondAsync("⛔ Valeurs invalides.", ephemeral: true);
+                return;
+            }
+
+            var raidSession = new RaidSession()
+            {
+                Day = day,
+                Hour = hour,
+                Minute = minute,
+                Duration = TimeSpan.FromMinutes(duration),
+                Roster = roster,
+            };
+
+            DateTime sessionTime = _raidService.GetNextSessionDateTime(raidSession);
+
+            sessionToReplace.ReplacedSession = sessionTime;
         }
 
     }
