@@ -43,7 +43,7 @@ namespace DaineBot.ScheduledService
 
                 try
                 {
-                    List<ReadyCheck> readyChecks = _db.ReadyChecks.Include(rc => rc.Session).ThenInclude(s => s.Roster).ToList();
+                    List<ReadyCheck> readyChecks = _db.ReadyChecks.Include(rc => rc.Messages).Include(rc => rc.Session).ThenInclude(s => s.Roster).ToList();
 
                     foreach (ReadyCheck check in readyChecks)
                     {
@@ -96,12 +96,26 @@ namespace DaineBot.ScheduledService
                 if (check.AcceptedPlayers.Count == raiders.Count)
                 {
                     response += "**Tout le monde** a confirmé sa présence !";
-                } else
+                }
+                else
                 {
                     response += $"{check.AcceptedPlayers.Count}/{raiders.Count} membres ont confirmé être présent.";
                 }
 
                 await raidChannel.SendMessageAsync(response);
+
+                if (check.Messages.Count > 0)
+                {
+                    foreach (var message in check.Messages)
+                    {
+                        var botMessage = await raidChannel.GetMessageAsync(message.MessageId);
+                        if (botMessage != null)
+                        {
+                            await botMessage.DeleteAsync();
+                        }
+                        _db.ReadyCheckMessages.Remove(message);
+                    }
+                }
             }
 
             check.Complete = true;
@@ -121,18 +135,17 @@ namespace DaineBot.ScheduledService
 
             List<SocketGuildUser> missingUsers = GetMissingReadyCheckUsers(check);
 
-            foreach (SocketGuildUser missingUser in missingUsers)
+            if (missingUsers.Count == 0 || raiders == null)
+                return;
+
+            ReadyCheckMessage? checkMessage = await _db.ReadyCheckMessages.FirstOrDefaultAsync(rcm => rcm.CheckId == check.Id);
+
+            if (checkMessage != null)
             {
-                var dm = await missingUser.SendMessageAsync(
-                        $"Rappel : La prochaine session de raid du roster de {guild.Name} est prévue le <t:{((DateTimeOffset)sessionTime).ToUnixTimeSeconds()}:F>.\nClique sur un bouton pour indiquer ta présence.\n" +
-                        $"Sans réponse de ta part avant le <t:{((DateTimeOffset)responseTimeLimit).ToUnixTimeSeconds()}:F>, ce bot s'autodétruira.",
-                        components: builder.Build());
+                var dmChannel = (SocketTextChannel?)guild?.GetChannel(check.Session.Roster.RosterChannel);
 
-                ReadyCheckMessage? checkMessage = await _db.ReadyCheckMessages.FirstOrDefaultAsync(rcm => rcm.UserId == missingUser.Id && rcm.CheckId == check.Id);
-
-                if (checkMessage != null)
+                if (dmChannel != null)
                 {
-                    var dmChannel = await missingUser.CreateDMChannelAsync();
                     var dmMessage = await dmChannel.GetMessageAsync(checkMessage.MessageId);
 
                     if (dmMessage != null)
@@ -140,18 +153,23 @@ namespace DaineBot.ScheduledService
                         await dmMessage.DeleteAsync();
                     }
 
-                    _db.ReadyCheckMessages.Remove(checkMessage);
+                    int voted = check.AcceptedPlayers.Count + check.DeniedPlayers.Count;
+                    int totalPlayers = raiders.Count;
+                    var dm = await dmChannel.SendMessageAsync(
+                    $"<@&{check.Session.Roster.RosterRole}> Rappel : La prochaine session de raid est prévue le <t:{((DateTimeOffset)sessionTime).ToUnixTimeSeconds()}:F>.\nMerci d'indiquer la présence ici. ({voted}/{totalPlayers})\n" +
+                    $"Sans réponse de tout le monde avant le <t:{((DateTimeOffset)responseTimeLimit).ToUnixTimeSeconds()}:F>, ce bot s'autodétruira.",
+                    components: builder.Build());
+
+                    ReadyCheckMessage readyChechMessage = new()
+                    {
+                        CheckId = check.Id,
+                        MessageId = dm.Id,
+                    };
+
+                    _db.ReadyCheckMessages.Add(readyChechMessage);
                 }
 
-                ReadyCheckMessage readyChechMessage = new()
-                {
-                    CheckId = check.Id,
-                    MessageId = dm.Id,
-                    UserId = missingUser.Id,
-                };
-
-                _db.ReadyCheckMessages.Add(readyChechMessage);
-                await _db.SaveChangesAsync();
+                _db.ReadyCheckMessages.Remove(checkMessage);
             }
 
             check.ReminderSent = true;

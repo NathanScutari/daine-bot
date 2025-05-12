@@ -107,29 +107,23 @@ namespace DaineBot.Services
                 .WithButton("Présent", $"readycheck_present:{readyCheck.Id}", ButtonStyle.Success)
                 .WithButton("Absent", $"readycheck_absent:{readyCheck.Id}", ButtonStyle.Danger);
 
-            foreach (var user in role.Members)
+            var rosterChannel = guild.GetChannel(session.Roster.RosterChannel) as SocketTextChannel;
+
+            if (rosterChannel == null)
+                return;
+
+            var message = await rosterChannel.SendMessageAsync(
+                $"<@&{session.Roster.RosterRole}> Ready check pour la prochaine session de raid qui est prévue le <t:{((DateTimeOffset)utcNextSession).ToUnixTimeSeconds()}:F>. (0/{role.Members.Count()})",
+                components: builder.Build());
+
+            ReadyCheckMessage readyChechMessage = new()
             {
-                try
-                {
-                    var dm = await user.SendMessageAsync(
-                        $"La prochaine session de raid du roster de {guild.Name} est prévue le <t:{((DateTimeOffset)utcNextSession).ToUnixTimeSeconds()}:F>.\nClique sur un bouton pour indiquer ta présence.",
-                        components: builder.Build());
+                CheckId = readyCheck.Id,
+                MessageId = message.Id
+            };
 
-                    ReadyCheckMessage readyChechMessage = new()
-                    {
-                        CheckId = readyCheck.Id,
-                        MessageId = dm.Id,
-                        UserId = user.Id,
-                    };
-
-                    _db.ReadyCheckMessages.Add(readyChechMessage);
-                    await _db.SaveChangesAsync();
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Impossible d’envoyer un message à {user.Username}: {ex.Message}");
-                }
-            }
+            _db.ReadyCheckMessages.Add(readyChechMessage);
+            await _db.SaveChangesAsync();
         }
     }
 }

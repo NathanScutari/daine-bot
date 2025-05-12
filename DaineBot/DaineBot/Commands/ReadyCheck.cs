@@ -40,12 +40,33 @@ namespace DaineBot.Commands
         {
 
             int checkId = int.Parse(checkIdRaw.Replace("readycheck_absent:", ""));
-            ReadyCheck? readyCheck = await _db.ReadyChecks.Include(rc => rc.Session).FirstOrDefaultAsync(rc => rc.Id == checkId);
+            ReadyCheck? readyCheck = await _db.ReadyChecks.Include(rc => rc.Session).ThenInclude(s => s.Roster).FirstOrDefaultAsync(rc => rc.Id == checkId);
             RaidSession? session = readyCheck?.Session;
-
+            
             if (session == null || readyCheck == null)
             {
                 await RespondAsync("https://tenor.com/view/this-is-fine-gif-24177057\nErreur pendant le ready check, tu peux contacter Den pour le prévenir ¯\\_(ツ)_/¯", ephemeral: true);
+                return;
+            }
+
+            var role = Context.Guild.GetRole(session.Roster.RosterRole);
+            if (role == null)
+            {
+                await RespondAsync("https://tenor.com/view/this-is-fine-gif-24177057\nErreur pendant le ready check, tu peux contacter Den pour le prévenir ¯\\_(ツ)_/¯", ephemeral: true);
+                return;
+            }
+
+            if (role.Members.ToList().Find(u => u.Id == Context.User.Id) == null)
+            {
+                await RespondAsync($"Bien essayé <@{Context.User.Id}>, mais tu fais pas partie du roster <:logansweet:684103798037544999>");
+                return;
+            }
+
+            SocketTextChannel? rosterChannel = await _client.GetChannelAsync(session.Roster.RosterChannel) as SocketTextChannel;
+
+            if (rosterChannel == null)
+            {
+                await RespondAsync("Erreur qui devrait pas être possible...", ephemeral: true);
                 return;
             }
 
@@ -55,23 +76,24 @@ namespace DaineBot.Commands
                 return;
             }
 
-            ReadyCheckMessage? checkMessage = await _db.ReadyCheckMessages.FirstOrDefaultAsync(rcm => rcm.UserId == Context.User.Id && rcm.CheckId == checkId);
+            readyCheck.DeniedPlayers.Remove(Context.User.Id);
+            readyCheck.AcceptedPlayers.Add(Context.User.Id);
+
+            int totalPlayers = Context?.Guild?.GetRole(session.Roster.RosterRole)?.Members?.Count() ?? 0;
+            int votedPlayers = readyCheck.DeniedPlayers.Count + readyCheck.AcceptedPlayers.Count;
+            ReadyCheckMessage? checkMessage = await _db.ReadyCheckMessages.FirstOrDefaultAsync(rcm => rcm.CheckId == checkId);
 
             if (checkMessage != null)
             {
-                var dmChannel = await Context.User.CreateDMChannelAsync();
-                var dmMessage = await dmChannel.GetMessageAsync(checkMessage.MessageId);
+                var dmMessage = await rosterChannel.GetMessageAsync(checkMessage.MessageId) as IUserMessage;
 
                 if (dmMessage != null)
                 {
-                    await dmMessage.DeleteAsync();
+                    string content = dmMessage.Content;
+                    await dmMessage.ModifyAsync(msg => msg.Content = content.Replace($"({votedPlayers - 1}/{totalPlayers})", $"({votedPlayers}/{totalPlayers})"));
                 }
-
-                _db.ReadyCheckMessages.Remove(checkMessage);
             }
 
-            readyCheck.DeniedPlayers.Remove(Context.User.Id);
-            readyCheck.AcceptedPlayers.Add(Context.User.Id);
             await _db.SaveChangesAsync();
 
             await RespondAsync("Merci, ta présence a bien été enregistrée !", ephemeral: true);
@@ -93,33 +115,52 @@ namespace DaineBot.Commands
                 return;
             }
 
+            var role = Context.Guild.GetRole(session.Roster.RosterRole);
+            if (role == null)
+            {
+                await RespondAsync("https://tenor.com/view/this-is-fine-gif-24177057\nErreur pendant le ready check, tu peux contacter Den pour le prévenir ¯\\_(ツ)_/¯", ephemeral: true);
+                return;
+            }
+
+            if (role.Members.ToList().Find(u => u.Id == Context.User.Id) == null)
+            {
+                await RespondAsync($"Bien essayé <@{Context.User.Id}>, mais tu fais pas partie du roster <:logansweet:684103798037544999>");
+                return;
+            }
+
+            SocketTextChannel? rosterChannel = await _client.GetChannelAsync(session.Roster.RosterChannel) as SocketTextChannel;
+
+            if (rosterChannel == null)
+            {
+                await RespondAsync("Erreur qui devrait pas être possible...", ephemeral: true);
+                return;
+            }
+
             if (readyCheck.DeniedPlayers.Contains(Context.User.Id))
             {
                 await RespondAsync("Merci, mais tu avais déjà refusé cette session petit malin.", ephemeral: true);
                 return;
             }
 
-            var embed = new EmbedBuilder()
-                .WithImageUrl("https://c.tenor.com/BYZf0mMHcY4AAAAd/tenor.gif")
-                .Build();
+            readyCheck.AcceptedPlayers.Remove(Context.User.Id);
+            readyCheck.DeniedPlayers.Add(Context.User.Id);
 
-            ReadyCheckMessage? checkMessage = await _db.ReadyCheckMessages.FirstOrDefaultAsync(rcm => rcm.UserId == Context.User.Id && rcm.CheckId == checkId);
+            int totalPlayers = Context?.Guild?.GetRole(session.Roster.RosterRole)?.Members?.Count() ?? 0;
+            int votedPlayers = readyCheck.DeniedPlayers.Count + readyCheck.AcceptedPlayers.Count;
+            ReadyCheckMessage? checkMessage = await _db.ReadyCheckMessages.FirstOrDefaultAsync(rcm => rcm.CheckId == checkId);
 
             if (checkMessage != null)
             {
-                var dmChannel = await Context.User.CreateDMChannelAsync();
-                var dmMessage = await dmChannel.GetMessageAsync(checkMessage.MessageId);
+                var dmMessage = await rosterChannel.GetMessageAsync(checkMessage.MessageId) as IUserMessage;
 
                 if (dmMessage != null)
                 {
-                    await dmMessage.DeleteAsync();
+                    string content = dmMessage.Content;
+                    await dmMessage.ModifyAsync(msg => msg.Content = content.Replace($"({votedPlayers - 1}/{totalPlayers})", $"({votedPlayers}/{totalPlayers})"));
                 }
-
-                _db.ReadyCheckMessages.Remove(checkMessage);
             }
 
-            readyCheck.AcceptedPlayers.Remove(Context.User.Id);
-            readyCheck.DeniedPlayers.Add(Context.User.Id);
+            
             await _db.SaveChangesAsync();
 
             await _raidService.SendRefusalToRL(readyCheck, Context.User);

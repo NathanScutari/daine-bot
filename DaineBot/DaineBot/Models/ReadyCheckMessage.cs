@@ -10,7 +10,6 @@ namespace DaineBot.Models
     {
         public int Id { get; set; }
         public ulong MessageId { get; set; }
-        public ulong UserId { get; set; }
         public ReadyCheck Check { get; set; } = null!;
         public int CheckId { get; set; }
     }
