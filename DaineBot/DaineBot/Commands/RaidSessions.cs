@@ -64,11 +64,13 @@ namespace DaineBot.Commands
             }
             else
             {
-                string response = $"Il y a **{sessions.Count} sessions par semaine :**";
+                string response = $"Il y a **{sessions.Count}** sessions par semaine :";
                 foreach (var session in sessions)
                 {
-                    response += $"\n  * {CultureInfo.CurrentCulture.DateTimeFormat.DayNames[session.Day]} : {session.Hour}H{session.Minute}, Durée : {session.Duration.ToString(@"hh\:mm")}";
+                    response += $"\n  - {CultureInfo.GetCultureInfo("Fr-fr").DateTimeFormat.DayNames[session.Day]} : {session.Hour}H{session.Minute}, Durée : {session.Duration.ToString(@"hh\:mm")} (prochaine session : <t:{((DateTimeOffset)session.NextSession).ToUnixTimeSeconds()}:F>)";
                 }
+
+                response += $"\n\n**La prochaine session est le <t:{((DateTimeOffset)sessions.MinBy(s => s.NextSession).NextSession).ToUnixTimeSeconds()}:F>**";
 
                 await RespondAsync(response, ephemeral: true, components: builder?.Build());
             }
@@ -174,7 +176,7 @@ namespace DaineBot.Commands
 
             var builder = new ComponentBuilder();
 
-            Models.Roster? roster = _db.Rosters.FirstOrDefault(r => r.Guild == guild.Id);
+            Models.Roster? roster = _db.Rosters.Include(r => r.Sessions).FirstOrDefault(r => r.Guild == guild.Id);
 
             if (roster == null)
             {
@@ -205,18 +207,18 @@ namespace DaineBot.Commands
             }
 
             var builder = new ComponentBuilder()
-                        .WithButton("Lundi", customId: $"raid_day_edit_1:{sessionId}")
-                        .WithButton("Mardi", customId: $"raid_day_edit_2:{sessionId}")
-                        .WithButton("Mercredi", customId: $"raid_day_edit_3:{sessionId}")
-                        .WithButton("Jeudi", customId: $"raid_day_edit_4:{sessionId}")
-                        .WithButton("Vendredi", customId: $"raid_day_edit_5:{sessionId}")
-                        .WithButton("Samedi", customId: $"raid_day_edit_6:{sessionId}")
-                        .WithButton("Dimanche", customId: $"raid_day_edit_0:{sessionId}");
+                        .WithButton("Lundi", customId: $"raid_edit_day_1:{sessionId}")
+                        .WithButton("Mardi", customId: $"raid_edit_day_2:{sessionId}")
+                        .WithButton("Mercredi", customId: $"raid_edit_dayt_3:{sessionId}")
+                        .WithButton("Jeudi", customId: $"raid_edit_day_4:{sessionId}")
+                        .WithButton("Vendredi", customId: $"raid_edit_dayt_5:{sessionId}")
+                        .WithButton("Samedi", customId: $"raid_edit_day_6:{sessionId}")
+                        .WithButton("Dimanche", customId: $"raid_edit_day_0:{sessionId}");
 
             await RespondAsync("Choisis le jour du raid pour remplacer la prochaine session", components: builder.Build(), ephemeral: true);
         }
 
-        [ComponentInteraction("raid_day_edit_*:*")]
+        [ComponentInteraction("raid_edit_day_*:*")]
         public async Task RaidSessionChoiceEdit(string dayRaw, string sessionIdRaw)
         {
             if (!int.TryParse(dayRaw, out int day) || !int.TryParse(sessionIdRaw, out int sessionId))
@@ -276,7 +278,10 @@ namespace DaineBot.Commands
 
             DateTime sessionTime = _raidService.GetNextSessionDateTime(raidSession);
 
-            sessionToReplace.ReplacedSession = sessionTime;
+            sessionToReplace.NextSession = sessionTime;
+
+            await _db.SaveChangesAsync();
+            await RespondAsync("La prochaine session a bien été modifiée.");
         }
 
     }

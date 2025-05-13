@@ -4,9 +4,11 @@ using Discord;
 using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Collections.Specialized.BitVector32;
 
 namespace DaineBot.Services
 {
@@ -34,7 +36,7 @@ namespace DaineBot.Services
 
             if (nextSessionConverted < DateTime.UtcNow)
             {
-                nextSessionConverted.AddDays(7);
+                nextSessionConverted = nextSessionConverted.AddDays(7);
             }
 
             return nextSessionConverted;
@@ -45,7 +47,7 @@ namespace DaineBot.Services
             var guild = _client.GetGuild(check.Session.Roster.Guild);
             var socketGuildUser = guild?.GetUser(user.Id);
             var RL = _client.GetUser(check.Session.Roster.RaidLeader);
-            DateTime nextSession = GetNextSessionDateTime(check.Session);
+            DateTime nextSession = (DateTime)check.Session.NextSession;
 
             if (guild == null || socketGuildUser == null) return;
 
@@ -59,7 +61,7 @@ namespace DaineBot.Services
             var guild = _client.GetGuild(check.Session.Roster.Guild);
             var socketGuildUser = guild?.GetUser(user.Id);
             var RL = _client.GetUser(check.Session.Roster.RaidLeader);
-            DateTime nextSession = GetNextSessionDateTime(check.Session);
+            DateTime nextSession = (DateTime)check.Session.NextSession;
 
             if (guild == null || socketGuildUser == null) return;
 
@@ -75,11 +77,12 @@ namespace DaineBot.Services
         public List<(string sessionStr, int id)> GetAllSessionsForRoster(Roster roster)
         {
             List<(string, int)> sessions = new();
+            var timeZone = TimeZoneInfo.FindSystemTimeZoneById(roster.TimeZoneId);
 
             foreach (RaidSession session in roster.Sessions)
             {
-                DateTime sessionDT = GetNextSessionDateTime(session);
-                (string, int) sessionTuple = ($"<t:{((DateTimeOffset)sessionDT).ToUnixTimeSeconds()}:F>", session.Id);
+                DateTime sessionDT = TimeZoneInfo.ConvertTimeFromUtc((DateTime)session.NextSession, timeZone);
+                (string, int) sessionTuple = ($"{sessionDT.ToString("dddd d MMMM HH'h'mm", new CultureInfo("fr-FR"))}", session.Id);
                 sessions.Add(sessionTuple);
             }
 
@@ -91,7 +94,9 @@ namespace DaineBot.Services
             var guild = _client.GetGuild(session.Roster.Guild);
             var role = guild.GetRole(session.Roster.RosterRole);
 
-            DateTime utcNextSession = GetNextSessionDateTime(session);
+            if (session.NextSession == null) return;
+
+            DateTime utcNextSession = (DateTime)session.NextSession;
 
             var readyCheck = new ReadyCheck()
             {

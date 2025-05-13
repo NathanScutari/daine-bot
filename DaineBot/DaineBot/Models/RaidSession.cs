@@ -18,6 +18,6 @@ namespace DaineBot.Models
         public int Day { get; set; }
         public TimeSpan Duration { get; set; }
         public ReadyCheck? Check { get; set; }
-        public DateTime? ReplacedSession { get; set; }
+        public DateTime? NextSession { get; set; }
     }
 }

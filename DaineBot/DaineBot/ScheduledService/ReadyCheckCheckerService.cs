@@ -74,9 +74,7 @@ namespace DaineBot.ScheduledService
 
         private async Task CheckIfPurgeNeeded(ReadyCheck check)
         {
-            DateTime sessionTime = _raidService.GetNextSessionDateTime(check.Session);
-
-            if (DateTime.UtcNow > sessionTime.AddMinutes(10))
+            if (check.Session.NextSession == null || DateTime.UtcNow > ((DateTime)check.Session.NextSession).AddMinutes(10))
             {
                 _db.ReadyChecks.Remove(check);
                 await _db.SaveChangesAsync();
@@ -88,7 +86,7 @@ namespace DaineBot.ScheduledService
             SocketTextChannel raidChannel = (SocketTextChannel)_client.GetChannel(check.Session.Roster.RosterChannel);
             SocketGuild guild = _client.GetGuild(check.Session.Roster.Guild);
             List<SocketGuildUser>? raiders = guild?.GetRole(check.Session.Roster.RosterRole)?.Members.ToList();
-            DateTime sessionTime = _raidService.GetNextSessionDateTime(check.Session);
+            DateTime sessionTime = (DateTime)check.Session.NextSession;
 
             if (raidChannel != null && raiders != null)
             {
@@ -127,7 +125,7 @@ namespace DaineBot.ScheduledService
             SocketGuild guild = _client.GetGuild(check.Session.Roster.Guild);
             List<SocketGuildUser>? raiders = guild?.GetRole(check.Session.Roster.RosterRole)?.Members.ToList();
 
-            DateTime sessionTime = _raidService.GetNextSessionDateTime(check.Session);
+            DateTime sessionTime = (DateTime)check.Session.NextSession;
             DateTime responseTimeLimit = sessionTime.AddHours(-1);
             var builder = new ComponentBuilder()
                 .WithButton("Présent", $"readycheck_present:{check.Id}", ButtonStyle.Success)
@@ -217,7 +215,7 @@ namespace DaineBot.ScheduledService
             if (check.ReminderSent || check.Complete)
                 return false;
 
-            DateTime sessionTime = _raidService.GetNextSessionDateTime(check.Session);
+            DateTime sessionTime = (DateTime)check.Session.NextSession;
 
             return sessionTime - DateTime.UtcNow < TimeSpan.FromHours(6);
         }

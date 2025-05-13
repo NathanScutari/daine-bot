@@ -38,17 +38,7 @@ namespace DaineBot.ScheduledService
                 try 
                 {
                     var now = DateTime.UtcNow;
-                    List<RaidSession> raidSessions = _db.RaidSessions.Include(rs => rs.Roster).Include(rs => rs.Check).Where(rs => ((rs.Day - ((int)DateTime.UtcNow.DayOfWeek) + 7) % 7) <= 1).AsEnumerable().Where(rs =>
-                    {
-                        if (rs.Check != null)
-                            return false;
-
-                        DateTime nextSession = _raidService.GetNextSessionDateTime(rs);
-
-                        if (nextSession - DateTime.UtcNow < TimeSpan.FromHours(24)) { return true; }
-
-                        return false;
-                    }).ToList();
+                    List<RaidSession> raidSessions = _db.RaidSessions.Include(rs => rs.Roster).Include(rs => rs.Check).Where(rs => rs.Check == null && rs.NextSession != null && DateTime.UtcNow > ((DateTime)rs.NextSession).AddHours(-12) && DateTime.UtcNow < (DateTime)rs.NextSession).ToList();
 
                     foreach (RaidSession raidSession in raidSessions)
                     {
@@ -60,14 +50,26 @@ namespace DaineBot.ScheduledService
                     Console.WriteLine($"[ScheduledTaskService] Erreur : {ex.Message}");
                 }
 
+                await FixEmptyRaidSessions(); //Temporaire le temps de migrer la base
+
                 // ⏱️ Attente de 10 minuteS
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
             }
         }
 
-        private List<RaidSession> GetSessionsNeedingReadyCheck()
+        private async Task FixEmptyRaidSessions()
         {
-            return new List<RaidSession>();
+            using var scope = _services.CreateScope();
+            var _db = scope.ServiceProvider.GetRequiredService<DaineBotDbContext>();
+
+            List<RaidSession> raidSessions = await _db.RaidSessions.Where(rs => rs.NextSession == null).Include(rs => rs.Roster).ToListAsync();
+
+            foreach (RaidSession raidSession in raidSessions)
+            {
+                raidSession.NextSession = _raidService.GetNextSessionDateTime(raidSession);
+            }
+
+            await _db.SaveChangesAsync();
         }
     }
 }

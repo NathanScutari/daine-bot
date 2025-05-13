@@ -42,17 +42,21 @@ namespace DaineBot.Commands
             int checkId = int.Parse(checkIdRaw.Replace("readycheck_absent:", ""));
             ReadyCheck? readyCheck = await _db.ReadyChecks.Include(rc => rc.Session).ThenInclude(s => s.Roster).FirstOrDefaultAsync(rc => rc.Id == checkId);
             RaidSession? session = readyCheck?.Session;
-            
+
+            var errorEmbed = new EmbedBuilder()
+                .WithImageUrl("https://c.tenor.com/MYZgsN2TDJAAAAAd/tenor.gif")
+                .Build();
+
             if (session == null || readyCheck == null)
             {
-                await RespondAsync("https://tenor.com/view/this-is-fine-gif-24177057\nErreur pendant le ready check, tu peux contacter Den pour le prévenir ¯\\_(ツ)_/¯", ephemeral: true);
+                await RespondAsync("Erreur pendant le ready check, tu peux contacter Den pour le prévenir ¯\\_(ツ)_/¯", embed: errorEmbed, ephemeral: true);
                 return;
             }
 
             var role = Context.Guild.GetRole(session.Roster.RosterRole);
             if (role == null)
             {
-                await RespondAsync("https://tenor.com/view/this-is-fine-gif-24177057\nErreur pendant le ready check, tu peux contacter Den pour le prévenir ¯\\_(ツ)_/¯", ephemeral: true);
+                await RespondAsync("Erreur pendant le ready check, tu peux contacter Den pour le prévenir ¯\\_(ツ)_/¯", embed: errorEmbed, ephemeral: true);
                 return;
             }
 
@@ -106,11 +110,12 @@ namespace DaineBot.Commands
             ReadyCheck? readyCheck = await _db.ReadyChecks.Include(rc => rc.Session).ThenInclude(s => s.Roster).FirstOrDefaultAsync(rc => rc.Id == checkId);
             RaidSession? session = readyCheck?.Session;
 
+            var errorEmbed = new EmbedBuilder()
+                .WithImageUrl("https://c.tenor.com/MYZgsN2TDJAAAAAd/tenor.gif")
+                .Build();
+
             if (session == null || readyCheck == null)
             {
-                var errorEmbed = new EmbedBuilder()
-                .WithImageUrl("https://c.tenor.com/BYZf0mMHcY4AAAAd/tenor.gif")
-                .Build();
                 await RespondAsync("Erreur pendant le ready check, tu peux contacter Den pour le prévenir ¯\\_(ツ)_/¯", embed: errorEmbed, ephemeral: true);
                 return;
             }
@@ -118,7 +123,7 @@ namespace DaineBot.Commands
             var role = Context.Guild.GetRole(session.Roster.RosterRole);
             if (role == null)
             {
-                await RespondAsync("https://tenor.com/view/this-is-fine-gif-24177057\nErreur pendant le ready check, tu peux contacter Den pour le prévenir ¯\\_(ツ)_/¯", ephemeral: true);
+                await RespondAsync("Erreur pendant le ready check, tu peux contacter Den pour le prévenir ¯\\_(ツ)_/¯", embed: errorEmbed, ephemeral: true);
                 return;
             }
 
@@ -160,12 +165,12 @@ namespace DaineBot.Commands
                 }
             }
 
-            
+            await RespondWithModalAsync<ReasonModal>($"readycheck_absent_reason:{readyCheck.Id}");
+
+
             await _db.SaveChangesAsync();
 
             await _raidService.SendRefusalToRL(readyCheck, Context.User);
-
-            await RespondWithModalAsync<ReasonModal>($"readycheck_absent_reason:{readyCheck.Id}");
         }
 
         [ModalInteraction("readycheck_absent_reason:*")]
@@ -177,7 +182,7 @@ namespace DaineBot.Commands
             if (readyCheck == null)
             {
                 var errorEmbed = new EmbedBuilder()
-                .WithImageUrl("https://c.tenor.com/BYZf0mMHcY4AAAAd/tenor.gif")
+                .WithImageUrl("https://c.tenor.com/MYZgsN2TDJAAAAAd/tenor.gif")
                 .Build();
                 await RespondAsync("Erreur pendant le ready check, tu peux contacter Den pour le prévenir ¯\\_(ツ)_/¯", embed: errorEmbed, ephemeral: true);
                 return;
