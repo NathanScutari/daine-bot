@@ -1,6 +1,7 @@
 ﻿using DaineBot.Data;
 using DaineBot.Models;
 using DaineBot.Services;
+using Discord.WebSocket;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -18,12 +19,16 @@ namespace DaineBot.ScheduledService
         private readonly RaidService _raidService;
         private readonly BotReadyService _botReady;
         private readonly IServiceProvider _services;
+        private readonly FFLogsService _ffLogsService;
+        private readonly DiscordSocketClient _client;
 
-        public RaidSessionReminderService(RaidService raidService, BotReadyService botReady, IServiceProvider services)
+        public RaidSessionReminderService(RaidService raidService, BotReadyService botReady, IServiceProvider services, FFLogsService ffLogsService, DiscordSocketClient client)
         {
             _raidService = raidService;
             _botReady = botReady;
             _services = services;
+            _ffLogsService = ffLogsService;
+            _client = client;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -49,7 +54,11 @@ namespace DaineBot.ScheduledService
 
                     foreach (RaidSession session in sessionsToUpdate)
                     {
-                        await UpdateNextSession(session, _db);
+                        if (await _ffLogsService.IsRaidSessionDone(session))
+                        {
+                            await SendSummaryToRosterChannel(session, await _ffLogsService.RaidSessionSummary(session));
+                            await UpdateNextSession(session, _db);
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -60,6 +69,18 @@ namespace DaineBot.ScheduledService
                 // ⏱️ Attente de 10 minuteS
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
             }
+        }
+
+        private async Task SendSummaryToRosterChannel(RaidSession session, string summary)
+        {
+            if (String.IsNullOrWhiteSpace(summary)) return;
+            var rosterChannel = _client.GetChannel(session.Roster.RosterChannel);
+            if (rosterChannel == null) return;
+
+            var rosterTextChannel = (SocketTextChannel)rosterChannel;
+
+            await rosterTextChannel.SendMessageAsync(summary);
+
         }
 
         private async Task UpdateNextSession(RaidSession raidSession, DaineBotDbContext _db)
