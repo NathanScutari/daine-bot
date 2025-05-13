@@ -77,6 +77,7 @@ namespace DaineBot
             var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
             var uri = new Uri(databaseUrl);
             var userInfo = uri.UserInfo.Split(':');
+            var fflogsToken = Environment.GetEnvironmentVariable("FFLOGS_TOKEN");
 
             var connectionString = $"Host={uri.Host};Port={uri.Port};Username={userInfo[0]};Password={userInfo[1]};Database={uri.AbsolutePath.TrimStart('/')};Trust Server Certificate=true;";
 
@@ -98,6 +99,7 @@ namespace DaineBot
                     services.AddSingleton<InteractionHandler>();
                     services.AddSingleton<RaidService>();
                     services.AddSingleton<BotReadyService>();
+                    services.AddSingleton(new FFLogsService(fflogsToken));
 
                     services.AddDbContext<DaineBotDbContext>(options => options.UseNpgsql(connectionString));
 
@@ -105,6 +107,7 @@ namespace DaineBot
                     services.AddHostedService<TmpRaidSessionPurger>();
                     services.AddHostedService<RaidSessionReminderService>();
                     services.AddHostedService<ReadyCheckCheckerService>();
+                    services.AddHostedService<FflogsReportFinderService>();
                 })
                 .Build();
         }

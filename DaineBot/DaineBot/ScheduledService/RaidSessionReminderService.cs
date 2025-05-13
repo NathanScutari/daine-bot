@@ -44,6 +44,13 @@ namespace DaineBot.ScheduledService
                     {
                         await _raidService.CreateReadyCheckForSession(raidSession);
                     }
+
+                    List<RaidSession> sessionsToUpdate = _db.RaidSessions.Include(rs => rs.Roster).Include(rs => rs.Check).Where(rs => DateTime.UtcNow > rs.NextSession.AddMinutes(rs.Duration.TotalMinutes)).ToList();
+
+                    foreach (RaidSession session in sessionsToUpdate)
+                    {
+                        await UpdateNextSession(session, _db);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -53,6 +60,33 @@ namespace DaineBot.ScheduledService
                 // ⏱️ Attente de 10 minuteS
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
             }
+        }
+
+        private async Task UpdateNextSession(RaidSession raidSession, DaineBotDbContext _db)
+        {
+            DateTime potentialNextSession = _raidService.GetNextSessionDateTime(raidSession);
+
+            DateTime today = DateTime.Today;
+
+            // Calcul du lundi suivant (exclut aujourd’hui si on est lundi)
+            int daysUntilMonday = ((int)DayOfWeek.Monday - (int)today.DayOfWeek + 7) % 7;
+            daysUntilMonday = daysUntilMonday == 0 ? 7 : daysUntilMonday;
+            DateTime nextMonday = today.AddDays(daysUntilMonday);
+
+            // Vérification
+            if (potentialNextSession < nextMonday)
+            {
+                potentialNextSession = potentialNextSession.AddDays(7);
+            }
+
+            if (raidSession.Check != null)
+            {
+                _db.Remove(raidSession.Check);
+            }
+
+            raidSession.ReportCode = null;
+            raidSession.NextSession = potentialNextSession;
+            await _db.SaveChangesAsync();
         }
     }
 }

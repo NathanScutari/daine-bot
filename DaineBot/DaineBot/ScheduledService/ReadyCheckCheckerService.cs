@@ -58,8 +58,6 @@ namespace DaineBot.ScheduledService
                             await SendReminder(check);
                             continue;
                         }
-
-                        await CheckIfPurgeNeeded(check);
                     }
                 }
                 catch (Exception ex)
@@ -69,15 +67,6 @@ namespace DaineBot.ScheduledService
 
                 // ⏱️ Attente de 10 minutes
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
-            }
-        }
-
-        private async Task CheckIfPurgeNeeded(ReadyCheck check)
-        {
-            if (DateTime.UtcNow > ((DateTime)check.Session.NextSession).AddMinutes(10))
-            {
-                _db.ReadyChecks.Remove(check);
-                await _db.SaveChangesAsync();
             }
         }
 

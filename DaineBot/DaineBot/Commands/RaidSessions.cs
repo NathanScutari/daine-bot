@@ -55,7 +55,7 @@ namespace DaineBot.Commands
             if (await _adminService.HasAdminRoleAsync(Context))
             {
                 builder = new ComponentBuilder()
-                    .WithButton("Ajouter un jour de raid", "raid-session-create");
+                    .WithButton("Ajouter une session de raid", "raid-session-create");
             }
 
             if (sessions.Count == 0)
@@ -74,6 +74,54 @@ namespace DaineBot.Commands
 
                 await RespondAsync(response, ephemeral: true, components: builder?.Build());
             }
+        }
+
+        [SlashCommand("supprimer-session", "Supprime une session déjà configurée")]
+        public async Task RaidSessionDelete()
+        {
+            if (!await _adminService.HasAdminRoleAsync(Context)) { return; }
+
+            var guild = Context.Guild;
+            if (guild == null) { return; }
+
+            var builder = new ComponentBuilder();
+
+            Models.Roster? roster = _db.Rosters.Include(r => r.Sessions).FirstOrDefault(r => r.Guild == guild.Id);
+
+            if (roster == null)
+            {
+                await RespondAsync("Il n'y a pas encore de roster configuré sur le serveur.");
+                return;
+            }
+
+            var sessionTuple = _raidService.GetAllSessionsForRoster(roster);
+
+            foreach (RaidSession session in roster.Sessions)
+            {
+                builder.WithButton($"{CultureInfo.GetCultureInfo("Fr-fr").DateTimeFormat.DayNames[session.Day]} {session.Hour}H{session.Minute}", "session_delete:" + session.Id);
+            }
+
+            await RespondAsync("Choisis une session à supprimer", components: builder.Build(), ephemeral: true);
+        }
+
+        [ComponentInteraction("session_delete:*")]
+        public async Task ConfirmRaidSessionDelete(string sessionIdRaw)
+        {
+            var sessionId = int.Parse(sessionIdRaw.Replace("session_delete:", ""));
+
+            RaidSession? session = await _db.RaidSessions.Include(rs => rs.Check).FirstOrDefaultAsync(rs => rs.Id == sessionId);
+
+            if (session == null) 
+            { 
+                await RespondAsync("Session introuvable", ephemeral: true);
+                return; 
+            }
+
+            if (session.Check != null) _db.ReadyChecks.Remove(session.Check);
+            _db.RaidSessions.Remove(session);
+            await _db.SaveChangesAsync();
+
+            await RespondAsync("La session a bien été supprimée", ephemeral: true);
         }
 
         [ComponentInteraction("raid-session-create")]
@@ -159,6 +207,8 @@ namespace DaineBot.Commands
                 Roster = roster,
             };
 
+            raidSession.NextSession = _raidService.GetNextSessionDateTime(raidSession);
+
             _db.TmpSessions.Remove(tmpRaidSession);
             await _db.RaidSessions.AddAsync(raidSession);
             await _db.SaveChangesAsync();
@@ -197,21 +247,14 @@ namespace DaineBot.Commands
         [ComponentInteraction("session_edit:*")]
         public async Task RaidSessionChoiceEdit(string id)
         {
-            var tmpRaidSession = _db.TmpSessions.FirstOrDefault(trs => trs.UserId == Context.User.Id && trs.GuildId == Context.Guild.Id);
             var sessionId = int.Parse(id.Replace("session_edit:", ""));
-
-            if (tmpRaidSession != null)
-            {
-                _db.TmpSessions.Remove(tmpRaidSession);
-                await _db.SaveChangesAsync();
-            }
 
             var builder = new ComponentBuilder()
                         .WithButton("Lundi", customId: $"raid_edit_day_1:{sessionId}")
                         .WithButton("Mardi", customId: $"raid_edit_day_2:{sessionId}")
-                        .WithButton("Mercredi", customId: $"raid_edit_dayt_3:{sessionId}")
+                        .WithButton("Mercredi", customId: $"raid_edit_day_3:{sessionId}")
                         .WithButton("Jeudi", customId: $"raid_edit_day_4:{sessionId}")
-                        .WithButton("Vendredi", customId: $"raid_edit_dayt_5:{sessionId}")
+                        .WithButton("Vendredi", customId: $"raid_edit_day_5:{sessionId}")
                         .WithButton("Samedi", customId: $"raid_edit_day_6:{sessionId}")
                         .WithButton("Dimanche", customId: $"raid_edit_day_0:{sessionId}");
 
@@ -278,10 +321,14 @@ namespace DaineBot.Commands
 
             DateTime sessionTime = _raidService.GetNextSessionDateTime(raidSession);
 
+            var rosterChannel = Context.Guild.GetTextChannel(roster.RosterChannel);
+
+            await rosterChannel.SendMessageAsync($"La session prévue de base le <t:{((DateTimeOffset)sessionToReplace.NextSession).ToUnixTimeSeconds()}:F> a été changée pour le <t:{((DateTimeOffset)sessionTime).ToUnixTimeSeconds()}:F>.");
+
             sessionToReplace.NextSession = sessionTime;
 
             await _db.SaveChangesAsync();
-            await RespondAsync("La prochaine session a bien été modifiée.");
+            await RespondAsync("La prochaine session a bien été modifiée.", ephemeral: true);
         }
 
     }
