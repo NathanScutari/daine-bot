@@ -50,26 +50,9 @@ namespace DaineBot.ScheduledService
                     Console.WriteLine($"[ScheduledTaskService] Erreur : {ex.Message}");
                 }
 
-                await FixEmptyRaidSessions(); //Temporaire le temps de migrer la base
-
                 // ⏱️ Attente de 10 minuteS
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
             }
-        }
-
-        private async Task FixEmptyRaidSessions()
-        {
-            using var scope = _services.CreateScope();
-            var _db = scope.ServiceProvider.GetRequiredService<DaineBotDbContext>();
-
-            List<RaidSession> raidSessions = await _db.RaidSessions.Where(rs => rs.NextSession == null).Include(rs => rs.Roster).ToListAsync();
-
-            foreach (RaidSession raidSession in raidSessions)
-            {
-                raidSession.NextSession = _raidService.GetNextSessionDateTime(raidSession);
-            }
-
-            await _db.SaveChangesAsync();
         }
     }
 }

@@ -74,7 +74,7 @@ namespace DaineBot.ScheduledService
 
         private async Task CheckIfPurgeNeeded(ReadyCheck check)
         {
-            if (check.Session.NextSession == null || DateTime.UtcNow > ((DateTime)check.Session.NextSession).AddMinutes(10))
+            if (DateTime.UtcNow > ((DateTime)check.Session.NextSession).AddMinutes(10))
             {
                 _db.ReadyChecks.Remove(check);
                 await _db.SaveChangesAsync();
