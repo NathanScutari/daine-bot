@@ -1,7 +1,4 @@
-﻿using System.Net.Http;
-using System.Threading.Tasks;
-using DaineBot.DTO;
-using DaineBot.Models;
+﻿using DaineBot.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
