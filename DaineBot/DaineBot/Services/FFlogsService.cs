@@ -99,14 +99,14 @@ namespace DaineBot.Services
                 if (kill)
                 {
                     TimeSpan killTime = TimeSpan.FromMilliseconds((float)(encounters.First(o => (bool)o.kill == true).combatTime));
-                    summaryResponse += $"- Kill en {encounters.Count} essais. ({killTime.Minutes}:{killTime.Seconds})";
+                    summaryResponse += $"- Kill en {encounters.Count} essais. ({killTime.Minutes}:{killTime.Seconds:D2})";
                 }
                 else
                 {
                     {
                         summaryResponse += $"- Le boss a été descendu jusqu'à {minPercentage.ToString("0.##")}% hp en phase {lastPhase + 1}\n" +
-                            $"- L'essai le plus long a duré {maxCombatTime.Minutes}:{maxCombatTime.Seconds}\n" +
-                            $"- Durée moyenne des wipes : {averageWipe.Minutes}:{averageWipe.Seconds}";
+                            $"- L'essai le plus long a duré {maxCombatTime.Minutes}:{maxCombatTime.Seconds:D2}\n" +
+                            $"- Durée moyenne des wipes : {averageWipe.Minutes}:{averageWipe.Seconds:D2}";
                     }
                 }
             }

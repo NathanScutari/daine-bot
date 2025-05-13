@@ -42,13 +42,13 @@ namespace DaineBot.ScheduledService
 
                 try 
                 {
-                    var now = DateTime.UtcNow;
-                    List<RaidSession> raidSessions = _db.RaidSessions.Include(rs => rs.Roster).Include(rs => rs.Check).Where(rs => rs.Check == null && rs.NextSession != null && DateTime.UtcNow > ((DateTime)rs.NextSession).AddHours(-12) && DateTime.UtcNow < (DateTime)rs.NextSession).ToList();
+                    //var now = DateTime.UtcNow;
+                    //List<RaidSession> raidSessions = _db.RaidSessions.Include(rs => rs.Roster).Include(rs => rs.Check).Where(rs => rs.Check == null && rs.NextSession != null && DateTime.UtcNow > ((DateTime)rs.NextSession).AddHours(-12) && DateTime.UtcNow < (DateTime)rs.NextSession).ToList();
 
-                    foreach (RaidSession raidSession in raidSessions)
-                    {
-                        await _raidService.CreateReadyCheckForSession(raidSession);
-                    }
+                    //foreach (RaidSession raidSession in raidSessions)
+                    //{
+                    //    await _raidService.CreateReadyCheckForSession(raidSession);
+                    //}
 
                     List<RaidSession> sessionsToUpdate = _db.RaidSessions.Include(rs => rs.Roster).Include(rs => rs.Check).Where(rs => DateTime.UtcNow > rs.NextSession.AddMinutes(rs.Duration.TotalMinutes)).ToList();
 
