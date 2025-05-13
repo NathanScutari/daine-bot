@@ -52,7 +52,7 @@ namespace DaineBot.Commands
             List<RaidSession> sessions = _db.RaidSessions.Where(rs => rs.Roster == roster).ToList();
 
             ComponentBuilder? builder = null;
-            if (await _adminService.HasAdminRoleAsync(Context))
+            if (await _adminService.HasAdminRoleAsync(Context, true))
             {
                 builder = new ComponentBuilder()
                     .WithButton("Ajouter une session de raid", "raid-session-create");

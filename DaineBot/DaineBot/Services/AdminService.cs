@@ -13,7 +13,7 @@ namespace DaineBot.Services
 {
     public interface IAdminService
     {
-        Task<bool> HasAdminRoleAsync(SocketInteractionContext context);
+        Task<bool> HasAdminRoleAsync(SocketInteractionContext context, bool noMessage = false);
     }
 
     public class AdminService : IAdminService
@@ -25,11 +25,12 @@ namespace DaineBot.Services
             _db = db;
         }
 
-        public async Task<bool> HasAdminRoleAsync(SocketInteractionContext context)
+        public async Task<bool> HasAdminRoleAsync(SocketInteractionContext context, bool noMessage = false)
         {
             if ((context.User as SocketGuildUser) == null)
             {
-                await context.Interaction.RespondAsync("Tu dois être dans un serveur pour utiliser la commande.", ephemeral: true);
+                if (!noMessage)
+                    await context.Interaction.RespondAsync("Tu dois être dans un serveur pour utiliser la commande.", ephemeral: true);
                 return false;
             }
 
@@ -37,7 +38,8 @@ namespace DaineBot.Services
 
             if (roles == null)
             {
-                await context.Interaction.RespondAsync("Il n'y a pas de rôle admin configuré sur ce serveur, un admin doit d'abord utiliser admin-roles", ephemeral: true);
+                if (!noMessage)
+                    await context.Interaction.RespondAsync("Il n'y a pas de rôle admin configuré sur ce serveur, un admin doit d'abord utiliser admin-roles", ephemeral: true);
                 return false;
             }
 
@@ -52,7 +54,8 @@ namespace DaineBot.Services
 
             if (hasAdminRole == false)
             {
-                await context.Interaction.RespondAsync("Tu n'as pas les droits nécessaires pour utiliser cette commande.", ephemeral: true);
+                if (!noMessage)
+                    await context.Interaction.RespondAsync("Tu n'as pas les droits nécessaires pour utiliser cette commande.", ephemeral: true);
                 return false;
             }
 
