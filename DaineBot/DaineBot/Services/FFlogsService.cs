@@ -104,7 +104,10 @@ namespace DaineBot.Services
                 else
                 {
                     {
-                        summaryResponse += $"- Le boss a été descendu jusqu'à {minPercentage.ToString("0.##")}% hp en phase {lastPhase + 1}\n" +
+                        summaryResponse += $"- Le boss a été descendu jusqu'à {minPercentage.ToString("0.##")}% hp";
+                        if (lastPhase != 0)
+                            summaryResponse += $" en phase {lastPhase}";
+                        summaryResponse += "\n" +
                             $"- L'essai le plus long a duré {maxCombatTime.Minutes}:{maxCombatTime.Seconds:D2}\n" +
                             $"- Durée moyenne des wipes : {averageWipe.Minutes}:{averageWipe.Seconds:D2}";
                     }
