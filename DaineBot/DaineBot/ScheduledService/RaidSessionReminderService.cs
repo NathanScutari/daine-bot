@@ -106,6 +106,7 @@ namespace DaineBot.ScheduledService
                 _db.Remove(raidSession.Check);
             }
 
+            raidSession.Announced = false;
             raidSession.ReportCode = null;
             raidSession.NextSession = potentialNextSession;
             await _db.SaveChangesAsync();
