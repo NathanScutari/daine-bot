@@ -72,7 +72,7 @@ namespace DaineBot.ScheduledService
             if (channel != null && session.ReportCode != null)
             {
                 var textChannel = (SocketTextChannel)channel;
-                await textChannel.SendMessageAsync($"Report fflog trouvé : https://www.fflogs.com/reports/{session.ReportCode}");
+                await textChannel.SendMessageAsync($"Report fflog trouvé : <https://www.fflogs.com/reports/{session.ReportCode}>");
             }
         }
     }
