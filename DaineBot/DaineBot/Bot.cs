@@ -108,6 +108,7 @@ namespace DaineBot
                     services.AddHostedService<RaidSessionReminderService>();
                     services.AddHostedService<ReadyCheckCheckerService>();
                     services.AddHostedService<FflogsReportFinderService>();
+                    services.AddHostedService<BotStatusRandomizerService>();
                 })
                 .Build();
         }
