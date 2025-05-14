@@ -53,12 +53,13 @@ namespace DaineBot.Services
             var query = @"{reportData {
 		                    report(code: ""{0}"") {
 				                fights {
-                                fightPercentage,
-					            bossPercentage,
-					            combatTime,
-					            lastPhase,
-					            kill,
-					            name
+                                    id,
+                                    fightPercentage,
+					                bossPercentage,
+					                combatTime,
+					                lastPhase,
+					                kill,
+					                name
 				                }
 			                }
 	                    }}";
@@ -99,8 +100,10 @@ namespace DaineBot.Services
                 summaryResponse += $"- **{wipes} wipes**\n";
                 if (kill)
                 {
-                    TimeSpan killTime = TimeSpan.FromMilliseconds((float)(encounters.First(o => (bool)o.kill == true).combatTime));
-                    summaryResponse += $"- Kill en {encounters.Count} essais. ({killTime.Minutes}:{killTime.Seconds:D2})";
+                    var killEncounter = encounters.First(o => (bool)o.kill == true);
+                    TimeSpan killTime = TimeSpan.FromMilliseconds((float)killEncounter.combatTime);
+                    summaryResponse += $"- Kill en {encounters.Count} essais. ({killTime.Minutes}:{killTime.Seconds:D2})\n";
+                    summaryResponse += $"Lien analysis du kill: <https://xivanalysis.com/fflogs/{session.ReportCode}/{killEncounter.id}>";
                 }
                 else
                 {
@@ -110,7 +113,8 @@ namespace DaineBot.Services
                             summaryResponse += $" en phase {furthestEncounter.lastPhase.ToString()}";
                         summaryResponse += "\n" +
                             $"- L'essai le plus long a duré {maxCombatTime.Minutes}:{maxCombatTime.Seconds:D2}\n" +
-                            $"- Durée moyenne des wipes : {averageWipe.Minutes}:{averageWipe.Seconds:D2}";
+                            $"- Durée moyenne des wipes : {averageWipe.Minutes}:{averageWipe.Seconds:D2}\n";
+                        summaryResponse += $"Lien analysis du wipe le plus avancé: <https://xivanalysis.com/fflogs/{session.ReportCode}/{furthestEncounter.id}>";
                     }
                 }
             }
