@@ -4,6 +4,7 @@ using Discord;
 using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -87,6 +88,41 @@ namespace DaineBot.Services
             }
 
             return sessions;
+        }
+
+        public async Task AnnounceNextSession(RaidSession session)
+        {
+            var guild = _client.GetGuild(session.Roster.Guild);
+
+            var rosterChannel = guild.GetChannel(session.Roster.RosterChannel) as SocketTextChannel;
+
+            if (rosterChannel == null)
+                return;
+
+            _db.Attach(session);
+            session.Announced = true;
+            await _db.SaveChangesAsync();
+
+            string[] raidMessages = new[]
+                {
+                    "Le raid approche à grands pas ! Prochaine session le {0}.",
+                    "Préparez les wipes... euh, les victoires : rendez-vous le {0} pour le prochain raid !",
+                    "Encore une chance de briller (ou de mourir glorieux) : raid prévu le {0}.",
+                    "On remet ça bientôt ! Prochain raid le {0}, soyez au rendez-vous.",
+                    "Le destin du monde repose sur vous (encore) : prochain raid le {0}.",
+                    "Alerte raid ! Prévu pour le {0}.",
+                    "Chauffez vos claviers et affûtez vos sorts : raid le {0}.",
+                    "Prêts ou pas, le raid débarque le {0} !",
+                    "On va encore sauver le monde (ou pas) le {0}.",
+                    "C’est l’heure de mourir en équipe : rendez-vous le {0} pour le raid.",
+                    "N’oubliez pas : le loot ne se ramasse pas tout seul. Raid le {0}.",
+                    "Les boss tremblent déjà. Prochain raid : {0}.",
+                    "On va encore faire hurler les healers. Raid le {0}."
+                };
+            Random rng = new Random();
+            var chosenMessage = raidMessages[rng.Next(raidMessages.Length)];
+
+            await rosterChannel.SendMessageAsync(chosenMessage.Replace("{0}", $"<t:{((DateTimeOffset)session.NextSession).ToUnixTimeSeconds()}:F>"));
         }
 
         public async Task CreateReadyCheckForSession(RaidSession session)

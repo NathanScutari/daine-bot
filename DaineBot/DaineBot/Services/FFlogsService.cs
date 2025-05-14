@@ -53,6 +53,7 @@ namespace DaineBot.Services
             var query = @"{reportData {
 		                    report(code: ""{0}"") {
 				                fights {
+                                fightPercentage,
 					            bossPercentage,
 					            combatTime,
 					            lastPhase,
@@ -86,13 +87,13 @@ namespace DaineBot.Services
             foreach (List<dynamic> encounters in separatedFights)
             {
                 bool kill = encounters.Any(o => ((bool)o.kill) == true);
-                float minPercentage = encounters.Min(o => ((float)o.bossPercentage));
                 TimeSpan maxCombatTime = TimeSpan.FromMilliseconds(encounters.Max(o => (float)o.combatTime));
                 int lastPhase = encounters.Max(o => (int)o.lastPhase);
                 string name = encounters.First().name;
                 int wipes = encounters.Sum(o => (bool)o.kill ? 0 : 1);
                 float sumDuration = encounters.Sum(o => (float)o.combatTime);
                 TimeSpan averageWipe = TimeSpan.FromMilliseconds(sumDuration / wipes);
+                dynamic furthestEncounter = encounters.MinBy(o => (float)o.fightPercentage);
 
                 summaryResponse += $"\n## {name}\n";
                 summaryResponse += $"- **{wipes} wipes**\n";
@@ -104,9 +105,9 @@ namespace DaineBot.Services
                 else
                 {
                     {
-                        summaryResponse += $"- Le boss a été descendu jusqu'à {minPercentage.ToString("0.##")}% hp";
+                        summaryResponse += $"- Le boss a été descendu jusqu'à {furthestEncounter.bossPercentage.ToString("0.##")}% hp";
                         if (lastPhase != 0)
-                            summaryResponse += $" en phase {lastPhase}";
+                            summaryResponse += $" en phase {furthestEncounter.lastPhase.ToString()}";
                         summaryResponse += "\n" +
                             $"- L'essai le plus long a duré {maxCombatTime.Minutes}:{maxCombatTime.Seconds:D2}\n" +
                             $"- Durée moyenne des wipes : {averageWipe.Minutes}:{averageWipe.Seconds:D2}";

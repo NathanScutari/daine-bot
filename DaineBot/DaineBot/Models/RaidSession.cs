@@ -19,5 +19,6 @@ namespace DaineBot.Models
         public TimeSpan Duration { get; set; }
         public ReadyCheck? Check { get; set; }
         public DateTime NextSession { get; set; }
+        public bool Announced { get; set; }
     }
 }
