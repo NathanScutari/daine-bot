@@ -4,6 +4,7 @@ using Discord.Interactions;
 using System.Reflection;
 using Discord.Commands;
 using DaineBot.Commands;
+using DaineBot.Services;
 
 
 namespace DaineBot.Core
@@ -13,12 +14,14 @@ namespace DaineBot.Core
         private readonly DiscordSocketClient _client;
         private readonly InteractionService _interactions;
         private readonly IServiceProvider _services;
+        private readonly PhilosopheService _philosopheService;
 
-        public InteractionHandler(DiscordSocketClient client, InteractionService interactions, IServiceProvider services)
+        public InteractionHandler(DiscordSocketClient client, InteractionService interactions, IServiceProvider services, PhilosopheService philosopheService)
         {
             _client = client;
             _interactions = interactions;
             _services = services;
+            _philosopheService = philosopheService;
         }
 
         public async Task InitializeAsync()
@@ -27,6 +30,16 @@ namespace DaineBot.Core
             {
                 var ctx = new SocketInteractionContext(_client, interaction);
                 await _interactions.ExecuteCommandAsync(ctx, _services);
+            };
+
+            _client.MessageReceived += async message =>
+            {
+                if (message.MentionedUsers.Any(u => u.Id == _client.CurrentUser.Id))
+                {
+                    var response = await _philosopheService.GetChatGptResponse(message);
+                    if (!String.IsNullOrEmpty(response))
+                        await message.Channel.SendMessageAsync(response);
+                }
             };
 
             await _interactions.AddModulesAsync(Assembly.GetEntryAssembly(), _services);

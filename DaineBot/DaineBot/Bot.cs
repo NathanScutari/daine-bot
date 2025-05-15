@@ -100,6 +100,7 @@ namespace DaineBot
                     services.AddSingleton<RaidService>();
                     services.AddSingleton<BotReadyService>();
                     services.AddSingleton(new FFLogsService(fflogsToken));
+                    services.AddSingleton<PhilosopheService>();
 
                     services.AddDbContext<DaineBotDbContext>(options => options.UseNpgsql(connectionString));
 
