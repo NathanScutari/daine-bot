@@ -99,9 +99,6 @@ namespace DaineBot.Services
             if (rosterChannel == null)
                 return;
 
-            session.Announced = true;
-            await _db.SaveChangesAsync();
-
             string[] raidMessages = new[]
                 {
                     "Le raid approche à grands pas ! Prochaine session le {0}.",
