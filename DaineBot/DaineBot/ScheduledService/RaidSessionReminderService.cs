@@ -48,6 +48,8 @@ namespace DaineBot.ScheduledService
                     foreach (RaidSession raidSession in raidSessions)
                     {
                         await _raidService.AnnounceNextSession(raidSession);
+                        raidSession.Announced = true;
+                        await _db.SaveChangesAsync();
                         //await _raidService.CreateReadyCheckForSession(raidSession);
                     }
 
