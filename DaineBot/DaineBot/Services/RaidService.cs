@@ -99,7 +99,6 @@ namespace DaineBot.Services
             if (rosterChannel == null)
                 return;
 
-            _db.Attach(session);
             session.Announced = true;
             await _db.SaveChangesAsync();
 
