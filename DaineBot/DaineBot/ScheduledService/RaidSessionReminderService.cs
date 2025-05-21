@@ -60,7 +60,7 @@ namespace DaineBot.ScheduledService
                     foreach (RaidSession session in sessionsToUpdate)
                     {
                         Console.WriteLine("Check FFLOGS");
-                        if (await _ffLogsService.IsRaidSessionDone(session))
+                        if (String.IsNullOrWhiteSpace(session.ReportCode) || await _ffLogsService.IsRaidSessionDone(session))
                         {
                             if (!String.IsNullOrWhiteSpace(session.ReportCode))
                             {
