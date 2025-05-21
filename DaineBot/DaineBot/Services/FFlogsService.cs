@@ -36,6 +36,7 @@ namespace DaineBot.Services
             request.Headers.Add("Authorization", $"Bearer {_token}");
             request.Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
             var response = await _httpClient.SendAsync(request);
+	    Console.WriteLine(await response.Content.ReadAsStringAsync());
 
             if (!response.IsSuccessStatusCode) return true;
 
