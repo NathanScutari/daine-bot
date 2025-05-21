@@ -39,6 +39,10 @@ namespace DaineBot.Services
 
 	    Console.WriteLine(response.IsSuccessStatusCode ? "Retour OK" : "Retour KO");
 
+	    Console.WriteLine(response.Headers);
+
+	    Console.WriteLine(response.Content?.Headers);
+
             if (!response.IsSuccessStatusCode) return true;
 
             var responseString = await response.Content.ReadAsStringAsync();
