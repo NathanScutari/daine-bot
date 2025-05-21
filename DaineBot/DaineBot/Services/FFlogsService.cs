@@ -51,7 +51,7 @@ namespace DaineBot.Services
             if (jsonResponse?.data?.reportData?.report?.endTime == null) return true;
             DateTime endTime = DateTimeOffset.FromUnixTimeMilliseconds(long.Parse((string)jsonResponse.data.reportData.report.endTime)).DateTime;
 
-            return endTime < DateTime.UtcNow.AddMinutes(-15);
+            return endTime < DateTime.UtcNow.AddMinutes(-5);
         }
 
         public async Task<string> RaidSessionSummary(RaidSession session)
@@ -88,7 +88,9 @@ namespace DaineBot.Services
             dynamic jsonResponse = JsonConvert.DeserializeObject(responseString);
 
             dynamic[] fights = ((JArray)jsonResponse.data.reportData.report.fights).ToObject<dynamic[]>();
+            fights = fights.Where(f => f.fightPercentage != null && f.bossPercentage != null && f.combatTime != null && f.lastPhase != null && f.kill != null && f.name != null).ToArray();
             List<List<dynamic>> separatedFights = fights.ToList().GroupBy(o => o.name).Select(g => g.ToList()).ToList();
+
 
             string summaryResponse = "# Résumé de la soirée :\n" +
                 $"- Total de **{separatedFights.Sum(l => l.Sum(o => ((bool)o.kill) ? 0 : 1))}** wipes\n";
