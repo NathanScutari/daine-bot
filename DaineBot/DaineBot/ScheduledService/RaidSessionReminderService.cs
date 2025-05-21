@@ -42,19 +42,24 @@ namespace DaineBot.ScheduledService
 
                 try 
                 {
+                    Console.WriteLine("RaidSession announce check");
                     var now = DateTime.UtcNow;
                     List<RaidSession> raidSessions = _db.RaidSessions.Include(rs => rs.Roster).Where(rs => rs.Announced == false && DateTime.UtcNow > ((DateTime)rs.NextSession).AddHours(-8) && DateTime.UtcNow < (DateTime)rs.NextSession).ToList();
 
                     foreach (RaidSession raidSession in raidSessions)
                     {
                         await _raidService.AnnounceNextSession(raidSession);
+                        raidSession.Announced = true;
+                        await _db.SaveChangesAsync();
                         //await _raidService.CreateReadyCheckForSession(raidSession);
                     }
 
+                    Console.WriteLine("RaidSession end check");
                     List<RaidSession> sessionsToUpdate = _db.RaidSessions.Include(rs => rs.Roster).Include(rs => rs.Check).Where(rs => DateTime.UtcNow > rs.NextSession.AddMinutes(rs.Duration.TotalMinutes)).ToList();
 
                     foreach (RaidSession session in sessionsToUpdate)
                     {
+                        Console.WriteLine("Check FFLOGS");
                         if (await _ffLogsService.IsRaidSessionDone(session))
                         {
                             if (!String.IsNullOrWhiteSpace(session.ReportCode))

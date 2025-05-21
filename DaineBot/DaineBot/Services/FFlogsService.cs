@@ -37,9 +37,16 @@ namespace DaineBot.Services
             request.Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
             var response = await _httpClient.SendAsync(request);
 
+	    Console.WriteLine(response.IsSuccessStatusCode ? "Retour OK" : "Retour KO");
+
+	    Console.WriteLine(response.Headers);
+
+	    Console.WriteLine(response.Content?.Headers);
+
             if (!response.IsSuccessStatusCode) return true;
 
             var responseString = await response.Content.ReadAsStringAsync();
+	    Console.WriteLine(responseString.ToString());
             dynamic jsonResponse = JsonConvert.DeserializeObject(responseString);
             if (jsonResponse?.data?.reportData?.report?.endTime == null) return true;
             DateTime endTime = DateTimeOffset.FromUnixTimeMilliseconds(long.Parse((string)jsonResponse.data.reportData.report.endTime)).DateTime;
