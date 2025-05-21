@@ -57,7 +57,10 @@ namespace DaineBot.ScheduledService
                     {
                         if (await _ffLogsService.IsRaidSessionDone(session))
                         {
-                            await SendSummaryToRosterChannel(session, await _ffLogsService.RaidSessionSummary(session));
+                            if (!String.IsNullOrWhiteSpace(session.ReportCode))
+                            {
+                                await SendSummaryToRosterChannel(session, await _ffLogsService.RaidSessionSummary(session));
+                            }
                             await UpdateNextSession(session, _db);
                         }
                     }
