@@ -326,6 +326,7 @@ namespace DaineBot.Commands
             await rosterChannel.SendMessageAsync($"La session prévue de base le <t:{((DateTimeOffset)sessionToReplace.NextSession).ToUnixTimeSeconds()}:F> a été changée pour le <t:{((DateTimeOffset)sessionTime).ToUnixTimeSeconds()}:F>.");
 
             sessionToReplace.NextSession = sessionTime;
+            sessionToReplace.Announced = false;
 
             await _db.SaveChangesAsync();
             await RespondAsync("La prochaine session a bien été modifiée.", ephemeral: true);
