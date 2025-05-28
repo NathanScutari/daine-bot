@@ -61,7 +61,7 @@ namespace DaineBot.ScheduledService
                 }
 
                 // ⏱️ Attente de 10 minuteS
-                await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
             }
         }
 
