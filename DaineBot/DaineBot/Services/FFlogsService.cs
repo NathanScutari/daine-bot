@@ -102,7 +102,7 @@ namespace DaineBot.Services
                 string name = encounters.First().name;
                 int wipes = encounters.Sum(o => (bool)o.kill ? 0 : 1);
                 float sumDuration = encounters.Sum(o => (float)o.combatTime);
-                TimeSpan averageWipe = TimeSpan.FromMilliseconds(sumDuration / wipes);
+                TimeSpan averageWipe = wipes > 0 ? TimeSpan.FromMilliseconds(sumDuration / wipes) : TimeSpan.FromMilliseconds(sumDuration);
                 dynamic furthestEncounter = encounters.MinBy(o => (float)o.fightPercentage);
 
                 summaryResponse += $"\n## {name}\n";
