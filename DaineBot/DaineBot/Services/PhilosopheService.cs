@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json.Serialization;
 using System.Net;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DaineBot.Services
 {
@@ -16,27 +17,32 @@ namespace DaineBot.Services
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
         private readonly string _model = "gpt-4.1-mini"; // ou "gpt-4o-mini" si dispo
-        private readonly DaineBotDbContext _db;
+        private readonly IServiceProvider _services;
         private readonly DiscordSocketClient _client;
+        private readonly RaidService _raidService;
 
-        public PhilosopheService(DaineBotDbContext db, DiscordSocketClient client)
+        public PhilosopheService(IServiceProvider services, DiscordSocketClient client, RaidService raidService)
         {
             _httpClient = new HttpClient();
             _apiKey = Environment.GetEnvironmentVariable("GPT_KEY");
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-            _db = db;
+            _services = services;
             _client = client;
+            _raidService = raidService;
         }
 
         public async Task<string> GetChatGptResponse(SocketMessage message)
         {
+            using var scope = _services.CreateScope();
+            var _db = scope.ServiceProvider.GetRequiredService<DaineBotDbContext>();
+
             if (!(message.Channel is SocketGuildChannel))
             {
                 return "Je ne réponds que sur le salon de raid du serveur. 🤌";
             }
             var guildChannel = message.Channel as SocketGuildChannel;
             if (guildChannel == null) return "";
-            var roster = await _db.Rosters.FirstOrDefaultAsync(r => r.Guild == guildChannel.Guild.Id);
+            var roster = await _db.Rosters.Include(r => r.Sessions).FirstOrDefaultAsync(r => r.Guild == guildChannel.Guild.Id);
 
             if (roster == null) return "";
             if (guildChannel.Id != roster.RosterChannel) return "";
@@ -67,6 +73,22 @@ namespace DaineBot.Services
             "Les messages du salon sont précédés par le nom de l'utilisateur (ex : 'Alice : Salut'). Toi, tu ne mets jamais de nom ou de format spécial, tu réponds uniquement avec le contenu de ta réponse, comme si tu étais l'intervenant principal." +
             $"Voici tous les utilisateurs dans le salon pour contexte : {allChannelUsers}."} }
         };
+
+            var nextSessionsList = _raidService.GetAllSessionsForRoster(roster);
+            if (nextSessionsList.Count > 0)
+            {
+                var nextSessionsListString = "";
+                foreach (var session in nextSessionsList)
+                {
+                    nextSessionsListString += $"\n- {session.sessionStr}";
+                }
+                chatMessages.Add(new Dictionary<string, string>
+            {
+                { "role", "system" },
+                { "content", $"Tu as également connaissance des prochaines sessions de raid et tu peux aider les personnes qui te posent des questions par rapport à ça, voici les prochaines sessions (pas forcément dans l'ordre, à toi de comparer les dates) : {nextSessionsListString}." +
+                $"Les heures sont données au fuseau horaire du roster : {roster.TimeZoneId}. Précise à chaque fois que utilises cette connaissance que ça peut être faux et qu'il faut vérifier en faisant la commande /raid-session, tu dis parfois des bêtises. La commande /raid-session donne les infos sur toutes les sessions du roster et précise la prochaine à arriver. La commande a toujours raison contrairement aux discussions avec toi." }
+            });
+            }
 
             foreach (var msg in messages.Reverse())
             {

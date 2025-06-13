@@ -24,6 +24,17 @@ namespace DaineBot.Services
             _client = client;
         }
 
+        public bool IsSessionModified(RaidSession session)
+        {
+            DateTime normalNextSession = this.GetNextSessionDateTime(session);
+            if (session.NextSession.DayOfWeek == normalNextSession.DayOfWeek && session.NextSession.Hour == normalNextSession.Hour && session.NextSession.Minute == normalNextSession.Minute)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         public DateTime GetNextSessionDateTime(RaidSession session)
         {
             var timezone = TimeZoneInfo.FindSystemTimeZoneById(session.Roster.TimeZoneId);
@@ -79,6 +90,8 @@ namespace DaineBot.Services
         {
             List<(string, int)> sessions = new();
             var timeZone = TimeZoneInfo.FindSystemTimeZoneById(roster.TimeZoneId);
+
+            roster.Sessions = roster.Sessions.OrderBy(s => s.NextSession).ToList();
 
             foreach (RaidSession session in roster.Sessions)
             {

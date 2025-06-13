@@ -216,6 +216,64 @@ namespace DaineBot.Commands
             await RespondAsync("La session de raid a bien été ajoutée.", ephemeral: true);
         }
 
+        [SlashCommand("skip-session", "Permet de skip une prochaine session (repousse la date d'une semaine)")]
+        public async Task RaidSessionSkipNext()
+        {
+            if (!await _adminService.HasAdminRoleAsync(Context)) { return; }
+
+            var guild = Context.Guild;
+            if (guild == null) { return; }
+
+            var builder = new ComponentBuilder();
+
+            Models.Roster? roster = _db.Rosters.Include(r => r.Sessions).FirstOrDefault(r => r.Guild == guild.Id);
+
+            if (roster == null)
+            {
+                await RespondAsync("Il n'y a pas encore de roster configuré sur le serveur.");
+                return;
+            }
+
+            var sessionTuple = _raidService.GetAllSessionsForRoster(roster);
+
+            foreach (var session in sessionTuple)
+            {
+                builder.WithButton(session.sessionStr, "session_skip:" + session.id);
+            }
+
+            await RespondAsync("Choisis une session à skip", components: builder.Build(), ephemeral: true);
+        }
+
+
+        [ComponentInteraction("session_skip:*")]
+        public async Task RaidSessionChoiceSkip(string id)
+        {
+            var sessionId = int.Parse(id.Replace("session_skip:", ""));
+
+            RaidSession? sessionToSkip = await _db.RaidSessions.Include(rs => rs.Roster).FirstOrDefaultAsync(rs => rs.Id == sessionId);
+
+            if (sessionToSkip == null)
+            {
+                await RespondAsync("Impossible de retrouver la session à skip, elle a peut être été supprimée entre temps ?");
+                return;
+            }
+
+            DateTime nextSessionDateTime = default!;
+            if (_raidService.IsSessionModified(sessionToSkip))
+            {
+                nextSessionDateTime = _raidService.GetNextSessionDateTime(sessionToSkip).AddDays(7);
+            } else
+            {
+                nextSessionDateTime = sessionToSkip.NextSession.AddDays(7);
+            }
+
+            sessionToSkip.NextSession = nextSessionDateTime;
+
+            await _db.SaveChangesAsync();
+            await RespondAsync($"La prochaine session a été repoussée au <t:{((DateTimeOffset)nextSessionDateTime).ToUnixTimeSeconds()}:F>", ephemeral: true);
+            return;
+        }
+
         [SlashCommand("modifier-prochaine-session", "Permet de modifier une prochaine session de raid")]
         public async Task RaidSessionTmpEdit()
         {
