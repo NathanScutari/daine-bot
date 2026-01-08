@@ -16,7 +16,7 @@ namespace DaineBot.Services
     {
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
-        private readonly string _model = "gpt-4.1-mini"; // ou "gpt-4o-mini" si dispo
+        private readonly string _model = "gpt-5-mini"; // ou "gpt-4o-mini" si dispo
         private readonly IServiceProvider _services;
         private readonly DiscordSocketClient _client;
         private readonly RaidService _raidService;

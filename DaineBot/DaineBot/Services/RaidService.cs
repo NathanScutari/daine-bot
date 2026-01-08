@@ -126,7 +126,26 @@ namespace DaineBot.Services
                     "C’est l’heure de mourir en équipe : rendez-vous le {0} pour le raid.",
                     "N’oubliez pas : le loot ne se ramasse pas tout seul. Raid le {0}.",
                     "Les boss tremblent déjà. Prochain raid : {0}.",
-                    "On va encore faire hurler les healers. Raid le {0}."
+                    "On va encore faire hurler les healers. Raid le {0}.",
+                    "Le groupe est prêt, la strat un peu moins. Raid le {0}.",
+                    "Les potions sont optionnelles, les wipes garantis. Raid le {0}.",
+                    "On a une strat. Elle est théorique. Test en conditions réelles le {0}.",
+                    "Encore une occasion d’apprendre par l’échec : raid programmé le {0}.",
+                    "Les doigts glisseront, les cooldowns aussi. Raid le {0}.",
+                    "Une nouvelle tentative, un nouvel espoir. Raid le {0}.",
+                    "Statistiquement, ça finira par passer. Rendez-vous le {0}.",
+                    "On promet rien sauf des logs intéressants. Raid le {0}.",
+                    "Les erreurs d’hier deviennent la strat de demain. Raid le {0}.",
+                    "Respirez profondément… pull dans quelques heures : raid le {0}.",
+                    "Ce message n’est pas un piège. Raid programmé le {0}.",
+                    "Le {0}, il se passera quelque chose. Indice : ça wipe.",
+                    "Le {0}, on appuie sur des boutons en groupe.",
+                    "Un raid est prévu le {0}. La motivation est optionnelle.",
+                    "Rien de suspect à signaler, à part un raid le {0}.",
+                    "Le {0}, on improvise. Comme d’habitude.",
+                    "Bonne nouvelle ! Un raid arrive le {0}. Mauvaise nouvelle : vous êtes inscrits.",
+                    "Le {0}, on va collectivement faire semblant de savoir ce qu’on fait.",
+
                 };
             Random rng = new Random();
             var chosenMessage = raidMessages[rng.Next(raidMessages.Length)];
