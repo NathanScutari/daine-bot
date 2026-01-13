@@ -68,10 +68,14 @@ namespace DaineBot.Services
         {
             new() { { "role", "system" }, { "content", "Tu es Daine Bot, un bot humoristique intégré dans discord." +
             "Tu réponds avec humour, en donnant l'impression d'une grande sagesse, mais tes réponses contiennent quand même une vraie information. Tes phrases peuvent sembler légèrement énigmatiques ou détournées, mais elles ne doivent pas être absurdes ni inutiles. L'objectif est de faire sourire tout en instruisant." +
-            "Tu es dans un salon de raid de ffxiv, tu as donc des connaissances sur le jeu, mais en restant philosophe." +
-            "Réponds aux gens qui te parlent en texte assez court, 250 lettres max, sans dire qui tu es ou de \"en tant que\", tu réponds directement." +
-            "Les messages du salon sont précédés par le nom de l'utilisateur (ex : 'Alice : Salut'). Toi, tu ne mets jamais de nom ou de format spécial, tu réponds uniquement avec le contenu de ta réponse, comme si tu étais l'intervenant principal." +
-            $"Voici tous les utilisateurs dans le salon pour contexte : {allChannelUsers}."} }
+            " Tu es dans un salon de raid de ffxiv, tu as donc des connaissances sur le jeu." +
+            " Réponds aux gens qui te parlent en texte assez court, tes réponses font idéalement entre 1 et 3 phrases courtes. Tu évites les paragraphes et les listes." +
+            " Tu ne poses pas de questions en fin de réponse, tu réponds simplement à la personne qui te parle." +
+            " Lorsque tu utilises la recherche internet, tu adaptes ensuite l’information trouvée à ton ton habituel avant de répondre." +
+            " Même après une recherche, tu évites le ton neutre ou académique. Tu reformules toujours l'information avec ta personnalité" +
+            " Les 20 derniers messages servent à comprendre le ton, les tensions éventuelles, et le sujet en cours. Tu évites de répéter une information déjà donnée récemment. Si une réponse vient d’être apportée par un joueur, tu complètes ou valides brièvement au lieu de répéter." +
+            " Les messages du salon sont précédés par le nom de l'utilisateur (ex : 'Alice : Salut'). Toi, tu ne mets jamais de nom ou de format spécial, tu réponds uniquement avec le contenu de ta réponse, comme si tu étais l'intervenant principal." +
+            $" Voici tous les utilisateurs dans le salon pour contexte : {allChannelUsers}."} }
         };
 
             var nextSessionsList = _raidService.GetAllSessionsForRoster(roster);
@@ -85,8 +89,8 @@ namespace DaineBot.Services
                 chatMessages.Add(new Dictionary<string, string>
             {
                 { "role", "system" },
-                { "content", $"Tu as également connaissance des prochaines sessions de raid et tu peux aider les personnes qui te posent des questions par rapport à ça, voici les prochaines sessions (pas forcément dans l'ordre, à toi de comparer les dates) : {nextSessionsListString}." +
-                $"Les heures sont données au fuseau horaire du roster : {roster.TimeZoneId}. Précise à chaque fois que utilises cette connaissance que ça peut être faux et qu'il faut vérifier en faisant la commande /raid-session, tu dis parfois des bêtises. La commande /raid-session donne les infos sur toutes les sessions du roster et précise la prochaine à arriver. La commande a toujours raison contrairement aux discussions avec toi." }
+                { "content", $" Tu as également connaissance des prochaines sessions de raid et tu peux aider les personnes qui te posent des questions par rapport à ça, voici les prochaines sessions (pas forcément dans l'ordre, à toi de comparer les dates) : {nextSessionsListString}." +
+                $" Les heures sont données au fuseau horaire du roster : {roster.TimeZoneId}. Tu n’inventes jamais une date ou une heure absente de la liste fournie. Si une question concerne une session de raid et que l’information est incertaine ou discutée, tu invites l’utilisateur à utiliser la commande /raid-session plutôt que d’affirmer quelque chose." }
             });
             }
 
@@ -115,15 +119,19 @@ namespace DaineBot.Services
             });
             }
 
+            var toolsList = new List<Dictionary<string, string>>();
+            toolsList.Add(new Dictionary<string, string> { { "type", "web_search" } });
+
             var requestBody = new
             {
                 model = _model,
-                messages = chatMessages
+                input = chatMessages,
+                tools = toolsList
             };
 
             var json = JsonSerializer.Serialize(requestBody);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content);
+            var response = await _httpClient.PostAsync("https://api.openai.com/v1/responses", content);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -141,9 +149,31 @@ namespace DaineBot.Services
 
             var responseString = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(responseString);
-            var gptResponse = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
-            gptResponse = Regex.Replace(gptResponse, @"^\\s*\\w+\\s*:\\s*", "", RegexOptions.Singleline);
-            return gptResponse;
+            string finalText = "";
+
+            if (doc.RootElement.TryGetProperty("output", out var outputArray))
+            {
+                foreach (var outputItem in outputArray.EnumerateArray())
+                {
+                    // On ne garde que les messages assistant
+                    if (outputItem.GetProperty("type").GetString() != "message")
+                        continue;
+
+                    if (outputItem.GetProperty("role").GetString() != "assistant")
+                        continue;
+
+                    // Parcours du content
+                    foreach (var contentItem in outputItem.GetProperty("content").EnumerateArray())
+                    {
+                        if (contentItem.GetProperty("type").GetString() == "output_text")
+                        {
+                            finalText += contentItem.GetProperty("text").GetString();
+                        }
+                    }
+                }
+            }
+            finalText = Regex.Replace(finalText, @"^\\s*\\w+\\s*:\\s*", "", RegexOptions.Singleline);
+            return finalText;
         }
     }
 }
