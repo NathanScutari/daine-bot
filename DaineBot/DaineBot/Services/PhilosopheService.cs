@@ -9,6 +9,8 @@ using System.Text.RegularExpressions;
 using Newtonsoft.Json.Serialization;
 using System.Net;
 using Microsoft.Extensions.DependencyInjection;
+using DaineBot.Models;
+using System;
 
 namespace DaineBot.Services
 {
@@ -29,6 +31,122 @@ namespace DaineBot.Services
             _services = services;
             _client = client;
             _raidService = raidService;
+        }
+
+        public async Task<string> GetChatGptSummaryComment(Roster rosterSession, string summaryReport)
+        {
+            using var scope = _services.CreateScope();
+            var _db = scope.ServiceProvider.GetRequiredService<DaineBotDbContext>();
+
+            Roster? roster = _db.Rosters.Where(r => r.Id == rosterSession.Id).Include(r => r.Sessions).FirstOrDefault();
+
+            if (roster == null)
+                return "Le commentateur était absent, nous n'avons pas reçu de message de sa part.";
+
+            var rosterChannel = _client.GetChannel(roster.RosterChannel) as SocketTextChannel;
+            if (rosterChannel == null) return "";
+
+            await rosterChannel.TriggerTypingAsync();
+
+            var allChannelUsers = "";
+            foreach (var user in rosterChannel.Users)
+            {
+                var userName = user.Nickname ?? user.GlobalName;
+                if (user.IsBot)
+                    continue;
+
+                if (!String.IsNullOrEmpty(allChannelUsers)) allChannelUsers += ", ";
+
+                allChannelUsers += userName;
+            }
+            var chatMessages = new List<Dictionary<string, string>>
+        {
+            new() { { "role", "system" }, { "content", "Tu es Daine Bot, un bot humoristique intégré dans discord." +
+            "Tu réponds avec humour, en donnant l'impression d'une grande sagesse, mais tes réponses contiennent quand même une vraie information. Tes phrases peuvent sembler légèrement énigmatiques ou détournées, mais elles ne doivent pas être absurdes ni inutiles. L'objectif est de faire sourire tout en instruisant." +
+            " Tu es dans un salon de raid de ffxiv, tu as donc des connaissances sur le jeu." +
+            " N'utilise pas de tiret dans tes phrases \"-\"" +
+            " Une soirée de raid vient de se terminer et tu viens d'envoyer le résumé de la soirée qui est le dernier message envoyé dont tu as connaissance, fais un petit commentaire philosophique sur le résumé de la soirée pour donner ton ressenti plein de sagesse, le commentaire doit fait 3 phrases maximum." +
+            " Tu peux utiliser une recherche web pour mieux comprendre le contexte du raid et les boss décris dans le résumé" +
+            $" Voici tous les utilisateurs dans le salon pour contexte : {allChannelUsers}."} }
+        };
+
+            var nextSessionsList = _raidService.GetAllSessionsForRoster(roster, removeToday: true);
+            if (nextSessionsList.Count > 0)
+            {
+                var nextSessionsListString = "";
+                foreach (var session in nextSessionsList)
+                {
+                    nextSessionsListString += $"\n- {session.sessionStr}";
+                }
+                chatMessages.Add(new Dictionary<string, string>
+            {
+                { "role", "system" },
+                { "content", $" Tu as également connaissance des prochaines sessions de raid et tu peux te servir de ce contexte pour le commentaire, voici les prochaines sessions (pas forcément dans l'ordre, à toi de comparer les dates) : {nextSessionsListString}." +
+                $" Les heures sont données au fuseau horaire du roster : {roster.TimeZoneId}. Tu n’inventes jamais une date ou une heure absente de la liste fournie." }
+            });
+            }
+
+            chatMessages.Add(new Dictionary<string, string>
+            {
+                { "role", "assistant" },
+                { "content", summaryReport }
+            });
+
+            var toolsList = new List<Dictionary<string, string>>();
+            toolsList.Add(new Dictionary<string, string> { { "type", "web_search" } });
+
+            var requestBody = new
+            {
+                model = _model,
+                input = chatMessages,
+                tools = toolsList
+            };
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync("https://api.openai.com/v1/responses", content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+
+                // Cas typique d'erreur liée aux crédits/quota
+                if (response.StatusCode == HttpStatusCode.PaymentRequired || errorContent.Contains("insufficient_quota"))
+                {
+                    return "Je n'ai plus les ressources pour produire ma sagesse, il faut demander à Den d'ouvrir son porte monnaie.";
+                }
+
+                return $"Erreur OpenAI: {response.StatusCode} - {await response.Content.ReadAsStringAsync()}";
+
+            }
+
+            var responseString = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(responseString);
+            string finalText = "";
+
+            if (doc.RootElement.TryGetProperty("output", out var outputArray))
+            {
+                foreach (var outputItem in outputArray.EnumerateArray())
+                {
+                    // On ne garde que les messages assistant
+                    if (outputItem.GetProperty("type").GetString() != "message")
+                        continue;
+
+                    if (outputItem.GetProperty("role").GetString() != "assistant")
+                        continue;
+
+                    // Parcours du content
+                    foreach (var contentItem in outputItem.GetProperty("content").EnumerateArray())
+                    {
+                        if (contentItem.GetProperty("type").GetString() == "output_text")
+                        {
+                            finalText += contentItem.GetProperty("text").GetString();
+                        }
+                    }
+                }
+            }
+            finalText = Regex.Replace(finalText, @"^\\s*\\w+\\s*:\\s*", "", RegexOptions.Singleline);
+            return finalText;
         }
 
         public async Task<string> GetChatGptResponse(SocketMessage message)
@@ -90,7 +208,7 @@ namespace DaineBot.Services
             {
                 { "role", "system" },
                 { "content", $" Tu as également connaissance des prochaines sessions de raid et tu peux aider les personnes qui te posent des questions par rapport à ça, voici les prochaines sessions (pas forcément dans l'ordre, à toi de comparer les dates) : {nextSessionsListString}." +
-                $" Les heures sont données au fuseau horaire du roster : {roster.TimeZoneId}. Tu n’inventes jamais une date ou une heure absente de la liste fournie. Si une question concerne une session de raid et que l’information est incertaine ou discutée, tu invites l’utilisateur à utiliser la commande /raid-session plutôt que d’affirmer quelque chose." }
+                $" Les heures sont données au fuseau horaire du roster : {roster.TimeZoneId}. Tu n’inventes jamais une date ou une heure absente de la liste fournie." }
             });
             }
 

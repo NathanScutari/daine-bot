@@ -67,7 +67,7 @@ namespace DaineBot.Commands
                 string response = $"Il y a **{sessions.Count}** sessions par semaine :";
                 foreach (var session in sessions)
                 {
-                    response += $"\n- {CultureInfo.GetCultureInfo("Fr-fr").DateTimeFormat.DayNames[session.Day]} : {session.Hour}H{session.Minute}, Durée : {session.Duration.ToString(@"hh\:mm")} (prochaine session : <t:{((DateTimeOffset)session.NextSession).ToUnixTimeSeconds()}:F>)";
+                    response += $"\n- {CultureInfo.GetCultureInfo("Fr-fr").DateTimeFormat.DayNames[session.Day]} : {session.Hour}H{session.Minute:D2}, Durée : {session.Duration.ToString(@"hh\:mm")} (prochaine session : <t:{((DateTimeOffset)session.NextSession).ToUnixTimeSeconds()}:F>)";
                 }
 
                 response += $"\n\n**La prochaine session est le <t:{((DateTimeOffset)sessions.MinBy(s => s.NextSession).NextSession).ToUnixTimeSeconds()}:F>**";

@@ -86,12 +86,12 @@ namespace DaineBot.Services
             await RL.SendMessageAsync(response);
         }
 
-        public List<(string sessionStr, int id)> GetAllSessionsForRoster(Roster roster)
+        public List<(string sessionStr, int id)> GetAllSessionsForRoster(Roster roster, bool removeToday = false)
         {
             List<(string, int)> sessions = new();
             var timeZone = TimeZoneInfo.FindSystemTimeZoneById(roster.TimeZoneId);
 
-            roster.Sessions = roster.Sessions.OrderBy(s => s.NextSession).ToList();
+            roster.Sessions = roster.Sessions.OrderBy(s => s.NextSession).Where(s => (s.NextSession.Date > DateTime.Today.Date || removeToday == false)).ToList();
 
             foreach (RaidSession session in roster.Sessions)
             {

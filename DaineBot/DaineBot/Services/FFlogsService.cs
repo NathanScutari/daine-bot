@@ -8,11 +8,13 @@ namespace DaineBot.Services
     {
         private readonly HttpClient _httpClient;
         private readonly string _token;
+        private readonly PhilosopheService _philosopheService;
 
-        public FFLogsService(string token)
+        public FFLogsService(PhilosopheService philosopheService)
         {
+            _token = Environment.GetEnvironmentVariable("FFLOGS_TOKEN");
             _httpClient = new HttpClient();
-            _token = token;
+            _philosopheService = philosopheService;
         }
 
         public async Task<bool> IsRaidSessionDone(RaidSession session)
@@ -37,16 +39,16 @@ namespace DaineBot.Services
             request.Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
             var response = await _httpClient.SendAsync(request);
 
-	    Console.WriteLine(response.IsSuccessStatusCode ? "Retour OK" : "Retour KO");
+            Console.WriteLine(response.IsSuccessStatusCode ? "Retour OK" : "Retour KO");
 
-	    Console.WriteLine(response.Headers);
+            Console.WriteLine(response.Headers);
 
-	    Console.WriteLine(response.Content?.Headers);
+            Console.WriteLine(response.Content?.Headers);
 
             if (!response.IsSuccessStatusCode) return true;
 
             var responseString = await response.Content.ReadAsStringAsync();
-	    Console.WriteLine(responseString.ToString());
+            Console.WriteLine(responseString.ToString());
             dynamic jsonResponse = JsonConvert.DeserializeObject(responseString);
             if (jsonResponse?.data?.reportData?.report?.endTime == null) return true;
             DateTime endTime = DateTimeOffset.FromUnixTimeMilliseconds(long.Parse((string)jsonResponse.data.reportData.report.endTime)).DateTime;
@@ -106,12 +108,22 @@ namespace DaineBot.Services
                 dynamic furthestEncounter = encounters.MinBy(o => (float)o.fightPercentage);
 
                 summaryResponse += $"\n## {name}\n";
-                summaryResponse += $"- **{wipes} wipes**\n";
+                if (wipes > 0)
+                    summaryResponse += $"- **{wipes} wipes**\n";
+
                 if (kill)
                 {
                     var killEncounter = encounters.First(o => (bool)o.kill == true);
                     TimeSpan killTime = TimeSpan.FromMilliseconds((float)killEncounter.combatTime);
-                    summaryResponse += $"- Kill en {encounters.Count} essais. ({killTime.Minutes}:{killTime.Seconds:D2})\n";
+                    if (wipes > 0)
+                    {
+                        summaryResponse += $"- Kill en {encounters.Count} essais. ({killTime.Minutes}:{killTime.Seconds:D2})\n";
+                    }
+                    else if (wipes == 0)
+                    {
+                        summaryResponse += $"First try ツ\n";
+                        summaryResponse += $"Durée du kill : {killTime.Minutes}:{killTime.Seconds:D2}\n";
+                    }
                     summaryResponse += $"Lien analysis du kill: <https://xivanalysis.com/fflogs/{session.ReportCode}/{killEncounter.id}>";
                 }
                 else
@@ -127,6 +139,11 @@ namespace DaineBot.Services
                     }
                 }
             }
+
+            string philosopheComment = await this._philosopheService.GetChatGptSummaryComment(session.Roster, summaryResponse);
+
+            summaryResponse += "\n## Commentaire du philosophe :\n" + philosopheComment;
+
             return summaryResponse;
 
         }
