@@ -4,5 +4,5 @@
   dockerfile = "DaineBot/Dockerfile"
 
 [deploy]
-  # Vous pouvez ajouter des variables d'environnement ici si nécessaire
+  # Vous pouvez ajouter des variables d'environnement ici si necessaire
   env = { "ASPNETCORE_ENVIRONMENT" = "Production" }
