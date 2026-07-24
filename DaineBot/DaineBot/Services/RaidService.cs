@@ -149,6 +149,7 @@ namespace DaineBot.Services
                 };
             Random rng = new Random();
             var chosenMessage = raidMessages[rng.Next(raidMessages.Length)];
+            chosenMessage = $"<@&{session.Roster.RosterRole}> ";
 
             await rosterChannel.SendMessageAsync(chosenMessage.Replace("{0}", $"<t:{((DateTimeOffset)session.NextSession).ToUnixTimeSeconds()}:F>"));
         }

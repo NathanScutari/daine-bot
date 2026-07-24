@@ -41,6 +41,7 @@ namespace DaineBot.Commands
                 return;
             }
 
+
             Models.Roster? roster = await _db.Rosters.FirstOrDefaultAsync(r => r.Guild == Context.Guild.Id);
 
             if (roster == null)
