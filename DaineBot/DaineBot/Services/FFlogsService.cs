@@ -155,7 +155,7 @@ namespace DaineBot.Services
             var query = @"
         {
 	        reportData {
-		        reports(userID: {0}, startTime: {1}) {
+		        reports(guildID: {0}, startTime: {1}) {
 			        data {
 				        startTime,
 				        code

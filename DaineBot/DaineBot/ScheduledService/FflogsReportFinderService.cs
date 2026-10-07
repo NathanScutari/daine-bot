@@ -46,7 +46,7 @@ namespace DaineBot.ScheduledService
 
                     foreach (RaidSession session in activesSessions)
                     {
-                        string report = await _fflogsService.GetLogsByUserAsync("67302", session);
+                        string report = await _fflogsService.GetLogsByUserAsync("141332", session);
                         if (report != null && report != "")
                         {
                             session.ReportCode = report;
