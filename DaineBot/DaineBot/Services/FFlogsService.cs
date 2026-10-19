@@ -184,6 +184,7 @@ namespace DaineBot.Services
             }
 
             var responseString = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"FFlog report response : {responseString}");
             dynamic jsonResponse = JsonConvert.DeserializeObject(responseString);
 
             var reports = jsonResponse.data.reportData.reports.data;

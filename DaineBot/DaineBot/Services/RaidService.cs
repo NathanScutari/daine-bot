@@ -151,6 +151,7 @@ namespace DaineBot.Services
             var chosenMessage = raidMessages[rng.Next(raidMessages.Length)];
             chosenMessage = $"<@&{session.Roster.RosterRole}> " + chosenMessage;
 
+            Console.WriteLine($"Annonce de session : {chosenMessage}");
             await rosterChannel.SendMessageAsync(chosenMessage.Replace("{0}", $"<t:{((DateTimeOffset)session.NextSession).ToUnixTimeSeconds()}:F>"));
         }
 

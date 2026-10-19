@@ -44,8 +44,10 @@ namespace DaineBot.ScheduledService
                 {
                     List<RaidSession> activesSessions = await _db.RaidSessions.Include(rs => rs.Roster).Where(rs => (rs.ReportCode == null || rs.ReportCode == "") && DateTime.UtcNow > rs.NextSession.AddMinutes(-5) && DateTime.UtcNow < rs.NextSession.AddMinutes(rs.Duration.TotalMinutes)).ToListAsync();
 
+                    Console.WriteLine($"FFlog cycle");
                     foreach (RaidSession session in activesSessions)
                     {
+                        Console.WriteLine($"Fflog check session : {session.NextSession.ToString()}");
                         string report = await _fflogsService.GetLogsByUserAsync("141332", session);
                         if (report != null && report != "")
                         {
