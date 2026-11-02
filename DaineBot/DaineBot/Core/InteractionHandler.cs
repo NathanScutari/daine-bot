@@ -34,9 +34,13 @@ namespace DaineBot.Core
 
             _client.MessageReceived += async message =>
             {
+                if (message.Author.IsBot)
+                    return;
+
                 if (message.MentionedUsers.Any(u => u.Id == _client.CurrentUser.Id))
                 {
-                    var response = await _philosopheService.GetChatGptResponse(message);
+                    var toolContext = await _philosopheService.GetRaidLeaderToolOrChatResponse(message);
+                    var response = await _philosopheService.GetChatGptResponse(message, toolContext);
                     if (!String.IsNullOrEmpty(response))
                         await message.Channel.SendMessageAsync(response);
                 }

@@ -14,6 +14,8 @@ namespace DaineBot.Services
     public interface IAdminService
     {
         Task<bool> HasAdminRoleAsync(SocketInteractionContext context, bool noMessage = false);
+
+        Task<bool> HasAdminRoleAsync(SocketGuild guild, SocketGuildUser user);
     }
 
     public class AdminService : IAdminService
@@ -60,6 +62,22 @@ namespace DaineBot.Services
             }
 
             return true;
+        }
+
+        public async Task<bool> HasAdminRoleAsync(SocketGuild guild, SocketGuildUser user)
+        {
+            var roles = await _db.AdminRoles.AsNoTracking().FirstOrDefaultAsync(ar => ar.Guild == guild.Id);
+            if (roles == null)
+                return false;
+
+            foreach (ulong roleId in roles.RoleList)
+            {
+                var role = guild.GetRole(roleId);
+                if (role != null && user.Roles.Contains(role))
+                    return true;
+            }
+
+            return false;
         }
     }
 }
